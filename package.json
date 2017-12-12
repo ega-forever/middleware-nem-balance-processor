@@ -1,0 +1,35 @@
+{
+  "name": "middleware-nem-blockprocessor",
+  "version": "0.0.1",
+  "description": "Middleware NEM blockprocessor",
+  "main": "index.js",
+  "scripts": {
+    "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
+    "test": "node ./node_modules/mocha/bin/mocha -t 90000 tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChronoBank/middleware-nem-blockprocessor.git"
+  },
+  "keywords": [
+    "chronobank",
+    "middleware",
+    "blockprocessor"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChronoBank/middleware-nem-blockprocessor/issues"
+  },
+  "homepage": "https://github.com/ChronoBank/middleware-nem-blockprocessor#readme",
+  "devDependencies": {
+    "babel-eslint": "^8.0.1",
+    "chai": "^4.1.2",
+    "eslint": "^4.10.0",
+    "eslint-plugin-chronobank": "github:chronobank/eslint-plugin-chronobank",
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "dotenv": "^4.0.0"
+  }
+}
