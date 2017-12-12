@@ -28,8 +28,6 @@ const errorHandler = err => {
 };
 
 module.exports = { 
-  blockHeight, 
-  getBlock,
   getAccount,
   getMosaicsForAccount
 };
