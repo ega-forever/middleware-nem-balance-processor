@@ -33,7 +33,7 @@ const inspect = obj => console.log(require('util').inspect(obj, { showHidden: tr
 const flattenMosaics = mosObj =>
   _.transform(mosObj, (acc, m) => acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity, {});
 
-const intersectByMosaic = (m1, m2) => 
+const intersectByMosaic = (m1, m2) =>
   _.intersection(_.keys(flattenMosaics(m1)), _.keys(flattenMosaics(m2)));
 
 const init = async () => {
@@ -77,6 +77,12 @@ const init = async () => {
         delete(accUpdateObj.mosaics['nem:xem']);
       }
       await accountModel.update({address: addr}, accUpdateObj);
+      await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
+          address: addr,
+          balance: balance,
+          mosaics: accUpdateObj['mosaics'],
+          tx: block
+        })));
 
     } catch(e) {
       log.error(e);
