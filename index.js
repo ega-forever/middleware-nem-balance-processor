@@ -16,7 +16,7 @@ const _ = require('lodash'),
   config = require('./config'),
   nis = require('./services/nisRequestService'),
   accountModel = require('./models/accountModel'),
-  log = bunyan.createLogger({name: 'nem-blockprocessor'});
+  log = bunyan.createLogger({name: 'nem-balance-processor'});
 
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
 
@@ -71,7 +71,8 @@ const init = async () => {
       let accUpdateObj = balance ? {balance} : {};
       
       if(_.get(block, 'mosaics')) {
-        const accMosaics = (await nis.getMosaicsForAccount(addr)).data;
+        let accMosaics = await nis.getMosaicsForAccount(addr);
+        accMosaics = _.get(accMosaics, 'data', {});
         const commonKeys = intersectByMosaic(_.get(block, 'mosaics'), accMosaics);
         accUpdateObj['mosaics'] = _.pick(flattenMosaics(accMosaics), commonKeys);
         delete(accUpdateObj.mosaics['nem:xem']);
