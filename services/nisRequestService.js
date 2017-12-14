@@ -24,7 +24,7 @@ const makeRequest = (path, method, body) => {
 };
 
 const errorHandler = err => {
-  log.error(err.error.message);
+  log.error(err);
 };
 
 module.exports = { 
