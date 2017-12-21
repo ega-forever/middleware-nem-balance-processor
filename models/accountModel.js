@@ -6,7 +6,8 @@
  */
 
 const mongoose = require('mongoose'),
-  messages = require('../factories/messages/accountMessageFactory');
+  config = require('../config'),
+  messages = require('../factories/messages/addressMessageFactory');
 
 require('mongoose-long')(mongoose);
 
@@ -22,4 +23,4 @@ const Account = new mongoose.Schema({
   mosaics: {type: mongoose.Schema.Types.Mixed, default: {}}
 });
 
-module.exports = mongoose.model('NemAccount', Account);
+module.exports = mongoose.model(`${config.mongo.accounts.collectionPrefix}Account`, Account);

@@ -21,14 +21,12 @@ const _ = require('lodash'),
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
 
 mongoose.Promise = Promise;
-mongoose.connect(config.mongo.uri, {useMongoClient: true});
+mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 mongoose.connection.on('disconnected', function () {
   log.error('Mongo disconnected!');
   process.exit(0);
 });
-
-const inspect = obj => console.log(require('util').inspect(obj, { showHidden: true, depth: null }));
 
 const flattenMosaics = mosObj =>
   _.transform(mosObj, (acc, m) => acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity, {});
