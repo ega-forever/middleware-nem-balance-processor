@@ -77,11 +77,11 @@ const init = async () => {
       }
       await accountModel.update({address: addr}, accUpdateObj);
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
-          address: addr,
-          balance: balance,
-          mosaics: accUpdateObj['mosaics'],
-          tx: block
-        })));
+        address: addr,
+        balance: balance,
+        mosaics: accUpdateObj['mosaics'],
+        tx: block
+      })));
 
     } catch(e) {
       log.error(e);
