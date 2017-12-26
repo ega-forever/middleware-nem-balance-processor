@@ -2,7 +2,7 @@
  * Mongoose model. Accounts
  * @module models/accountModel
  * @returns {Object} Mongoose model
- * @requires factory/accountMessageFactory
+ * @requires factory/addressMessageFactory
  */
 
 const mongoose = require('mongoose'),
