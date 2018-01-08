@@ -21,14 +21,12 @@ const _ = require('lodash'),
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
 
 mongoose.Promise = Promise;
-mongoose.connect(config.mongo.uri, {useMongoClient: true});
+mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 mongoose.connection.on('disconnected', function () {
   log.error('Mongo disconnected!');
   process.exit(0);
 });
-
-const inspect = obj => console.log(require('util').inspect(obj, { showHidden: true, depth: null }));
 
 const flattenMosaics = mosObj =>
   _.transform(mosObj, (acc, m) => acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity, {});
@@ -79,11 +77,11 @@ const init = async () => {
       }
       await accountModel.update({address: addr}, accUpdateObj);
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
-          address: addr,
-          balance: balance,
-          mosaics: accUpdateObj['mosaics'],
-          tx: block
-        })));
+        address: addr,
+        balance: balance,
+        mosaics: accUpdateObj['mosaics'],
+        tx: block
+      })));
 
     } catch(e) {
       log.error(e);

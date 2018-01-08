@@ -2,10 +2,13 @@ require('dotenv').config();
 
 const config = {
   mongo: {
-    uri: process.env.MONGO_URI || 'mongodb://localhost:27017/data-nem'
+    accounts: {
+      uri: process.env.MONGO_ACCOUNTS_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/data',
+      collectionPrefix: process.env.MONGO_ACCOUNTS_COLLECTION_PREFIX || process.env.MONGO_COLLECTION_PREFIX || 'nem'
+    }
   },
   nis: {
-    server:  process.env.NIS || 'http://localhost:7890',
+    server: process.env.NIS || 'http://localhost:7890',
     network: process.env.NETWORK || 'testnet',
   },
   rabbit: {
