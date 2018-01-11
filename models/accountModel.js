@@ -18,7 +18,11 @@ const Account = new mongoose.Schema({
     required: true,
     validate: [a => /^[0-9A-Z]{40}$/.test(a), messages.wrongAddress]
   },
-  balance: {type: mongoose.Schema.Types.Long, default: 0},
+  balance: {
+    confirmed: {type: mongoose.Schema.Types.Long, default: 0},
+    unconfirmed: {type: mongoose.Schema.Types.Long, default: 0},
+    vested: {type: mongoose.Schema.Types.Long, default: 0}
+  },
   created: {type: Date, required: true, default: Date.now},
   mosaics: {type: mongoose.Schema.Types.Mixed, default: {}}
 });
