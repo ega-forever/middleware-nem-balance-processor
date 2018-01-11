@@ -126,15 +126,12 @@ const init = async () => {
       _.merge(accUpdateObj, _.chain(commonKeys)
         .map(key=> [
           [`mosaics.confirmed.${key}`, mosaicsConfirmed[key]],
-          [`mosaics.unconfirmed.${key}`, mosaicsUnconfirmed[key]]
+          [`mosaics.unconfirmed.${key}`, mosaicsUnconfirmed[key] || 0]
         ])
         .flatten()
         .fromPairs()
         .value()
       );
-
-      console.log(accUpdateObj);
-
 
       await accountModel.update({address: addr}, accUpdateObj);
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
