@@ -8,6 +8,7 @@ const baseUrl = config.nis.server;
 
 const getMosaicsForAccount = async addr => get(`/account/mosaic/owned?address=${addr}`);
 const getAccount = async addr => get(`/account/get?address=${addr}`);
+const getUnconfirmedTransactions = async addr => get(`/account/unconfirmedTransactions?address=${addr}`);
 
 const get = query => makeRequest(query, 'GET');
 
@@ -27,5 +28,6 @@ const errorHandler = err => {
 
 module.exports = { 
   getAccount,
-  getMosaicsForAccount
+  getMosaicsForAccount,
+  getUnconfirmedTransactions
 };
