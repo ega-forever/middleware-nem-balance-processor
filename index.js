@@ -84,6 +84,7 @@ const init = async () => {
       let accUpdateObj = balance ? {
         balance: {
           confirmed: balance,
+          vested: vestedBalance,
           unconfirmed: balanceDelta ? balance + balanceDelta : 0
         }
       } : {};
