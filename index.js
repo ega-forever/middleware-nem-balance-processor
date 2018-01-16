@@ -68,10 +68,10 @@ const init = async () => {
         .transform((result, item) => {
 
           if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
-            return;
+          {return;}
 
           if (addr === item.transaction.recipient)
-            result.val += item.transaction.amount;
+          {result.val += item.transaction.amount;}
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
             result.val -= item.transaction.amount;
@@ -95,22 +95,22 @@ const init = async () => {
       const flattenedMosaics = utils.flattenMosaics(accMosaics);
 
       let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
-        .filter(item=>_.has(item, 'transaction.mosaics'))
+        .filter(item => _.has(item, 'transaction.mosaics'))
         .transform((result, item) => {
 
           if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
-            return;
+          {return;}
 
           if (addr === item.transaction.recipient) {
             item.transaction.mosaics.forEach(mosaic => {
-              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity
+              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity;
             });
 
           }
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
             item.transaction.mosaics.forEach(mosaic => {
-              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - mosaic.quantity
+              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - mosaic.quantity;
             });
           }
           return result;
@@ -118,14 +118,14 @@ const init = async () => {
         .pick(commonKeys)
         .toPairs()
         .transform((result, pair) => {
-          result[pair[0]] = (flattenedMosaics[pair[0]] || 0) + pair[1]
+          result[pair[0]] = (flattenedMosaics[pair[0]] || 0) + pair[1];
         }, {})
         .value();
 
       let mosaicsConfirmed = _.pick(utils.flattenMosaics(accMosaics), commonKeys);
 
       _.merge(accUpdateObj, _.chain(commonKeys)
-        .map(key=> [
+        .map(key => [
           [`mosaics.confirmed.${key}`, mosaicsConfirmed[key]],
           [`mosaics.unconfirmed.${key}`, mosaicsUnconfirmed[key] || 0]
         ])
@@ -134,11 +134,19 @@ const init = async () => {
         .value()
       );
 
-      await accountModel.update({address: addr}, accUpdateObj);
+      let account = await accountModel.findOneAndUpdate({address: addr}, accUpdateObj, {new: true});
+
+      let convertedBalance = utils.convertBalanceWithDivisibility(account.balance);
+      let convertedConfirmedMosaics = await utils.convertMosaicsWithDivisibility(account.mosaics.confirmed);
+      let convertedUnConfirmedMosaics = await utils.convertMosaicsWithDivisibility(account.mosaics.unconfirmed);
+
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,
-        balance: accUpdateObj.balance,
-        mosaics: accUpdateObj.mosaics,
+        balance: convertedBalance,
+        mosaics: {
+          confirmed: convertedConfirmedMosaics,
+          unconfirmed: convertedUnConfirmedMosaics
+        },
         tx: tx
       })));
 
