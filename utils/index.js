@@ -54,26 +54,40 @@ const convertMosaicsWithDivisibility = async (mosaics) => {
 
     let definition = await nis.getMosaicsDefinition(mosaic.namespaceId);
 
-    mosaic.value = mosaic.quantity / _.chain(definition)
-      .get('data')
-      .find({mosaic: {id: {name: mosaic.name}}})
-      .get('mosaic.properties')
-      .find({name: 'divisibility'})
-      .get('value', 1)
-      .thru(val => Math.pow(10, val))
-      .value();
+    mosaic.valueConfirmed = mosaic.quantity.confirmed / _.chain(definition)
+        .get('data')
+        .find({mosaic: {id: {name: mosaic.name}}})
+        .get('mosaic.properties')
+        .find({name: 'divisibility'})
+        .get('value', 1)
+        .thru(val => Math.pow(10, val))
+        .value();
+
+    mosaic.valueUnconfirmed = mosaic.quantity.unconfirmed / _.chain(definition)
+        .get('data')
+        .find({mosaic: {id: {name: mosaic.name}}})
+        .get('mosaic.properties')
+        .find({name: 'divisibility'})
+        .get('value', 1)
+        .thru(val => Math.pow(10, val))
+        .value();
 
     return mosaic;
   });
 
   return _.transform(mosaics, (acc, item) => {
     acc[`${item.namespaceId}:${item.name}`] = {
-      amount: item.value,
-      value: item.quantity
+      confirmed: {
+        amount: item.valueConfirmed,
+        value: item.quantity.confirmed
+      },
+      unconfirmed: {
+        amount: item.valueUnconfirmed,
+        value: item.quantity.unconfirmed
+      }
     };
   }, {});
 };
-
 
 module.exports = {
   flattenMosaics,
