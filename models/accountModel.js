@@ -1,4 +1,4 @@
-/** 
+/**
  * Mongoose model. Accounts
  * @module models/accountModel
  * @returns {Object} Mongoose model
@@ -7,9 +7,30 @@
 
 const mongoose = require('mongoose'),
   config = require('../config'),
+  _ = require('lodash'),
   messages = require('../factories/messages/addressMessageFactory');
 
 require('mongoose-long')(mongoose);
+
+const setMosaics = (mosaics) => {
+  return _.chain(mosaics).toPairs()
+    .map(pair => {
+      pair[0] = pair[0].replace('.', '::');
+      return pair;
+    })
+    .fromPairs()
+    .value();
+};
+
+const getMosaics = (mosaics) => {
+  return _.chain(mosaics).toPairs()
+    .map(pair => {
+      pair[0] = pair[0].replace('::', '.');
+      return pair;
+    })
+    .fromPairs()
+    .value();
+};
 
 const Account = new mongoose.Schema({
   address: {
@@ -24,7 +45,10 @@ const Account = new mongoose.Schema({
     vested: {type: mongoose.Schema.Types.Long, default: 0}
   },
   created: {type: Date, required: true, default: Date.now},
-  mosaics: {type: mongoose.Schema.Types.Mixed, default: {}}
+  mosaics: {type: mongoose.Schema.Types.Mixed, default: {}, set: setMosaics, get: getMosaics}
+}, {
+  toObject: {getters: true},
+  toJSON: {getters: true}
 });
 
 module.exports = mongoose.model(`${config.mongo.accounts.collectionPrefix}Account`, Account);
