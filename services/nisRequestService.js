@@ -10,8 +10,10 @@ const getMosaicsForAccount = async addr => get(`/account/mosaic/owned?address=${
 const getMosaicsDefinition = async id => get(`/namespace/mosaic/definition/page?namespace=${id}`);
 const getAccount = async addr => get(`/account/get?address=${addr}`);
 const getUnconfirmedTransactions = async addr => get(`/account/unconfirmedTransactions?address=${addr}`);
+const getBlock = async (blockHeight) => post('/block/at/public', {height: blockHeight});
 
 const get = query => makeRequest(query, 'GET');
+const post = (query, body) => makeRequest(query, 'POST', body);
 
 const makeRequest = (path, method, body) => {
   const options = {
@@ -31,5 +33,6 @@ module.exports = {
   getAccount,
   getMosaicsForAccount,
   getUnconfirmedTransactions,
-  getMosaicsDefinition
+  getMosaicsDefinition,
+  getBlock
 };
