@@ -2,6 +2,7 @@ require('dotenv/config');
 
 const config = require('../config'),
   mongoose = require('mongoose'),
+  _ = require('lodash'),
   Promise = require('bluebird');
 
 mongoose.Promise = Promise;
@@ -25,17 +26,29 @@ describe('core/balance processor', function () {
       let block = await nis.getBlock(height);
       if (block.transactions.length === 0)
         return await findBlock(height + 1);
-      return block;
+
+      let data = await Promise.map(block.transactions, async tx => {
+        let account = await nis.getAccount(tx.recipient);
+        return {tx, account};
+      });
+
+      let tx = _.chain(data)
+        .find(item => _.get(item, 'account.account.balance') > 0)
+        .get('tx')
+        .value();
+
+      if (!tx)
+        return await findBlock(height + 1);
+
+      return tx;
     };
 
-    let block = await findBlock(800);
-
-    expect(block).to.have.property('transactions');
-    ctx.block = block;
+    ctx.tx = await findBlock(800);
+    expect(ctx.tx).to.have.property('recipient');
   });
 
   it('add recipient from first tx of found block', async () => {
-    await new accountModel({address: ctx.block.transactions[0].recipient}).save();
+    await new accountModel({address: ctx.tx.recipient}).save();
   });
 
   it('validate notification via amqp about new tx', async () => {
@@ -46,14 +59,14 @@ describe('core/balance processor', function () {
     try {
       await channel.assertExchange('events', 'topic', {durable: false});
       await channel.assertQueue(`app_${config.rabbit.serviceName}_test.balance`);
-      await channel.bindQueue(`app_${config.rabbit.serviceName}_test.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.block.transactions[0].recipient}`);
+      await channel.bindQueue(`app_${config.rabbit.serviceName}_test.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.tx.recipient}`);
     } catch (e) {
       channel = await amqpInstance.createChannel();
     }
 
     return Promise.all([
       (async () => {
-        return await channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.block.transactions[0].recipient}`, new Buffer(JSON.stringify(ctx.block.transactions[0])));
+        return await channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.tx.recipient}`, new Buffer(JSON.stringify(ctx.tx)));
       })(),
       (async () => {
         return await new Promise(res => {
@@ -64,7 +77,13 @@ describe('core/balance processor', function () {
         });
       })()
     ]);
+  });
 
+
+  it('validate balance changes', async () => {
+    let account = await accountModel.findOne({address: ctx.tx.recipient});
+    expect(account).to.have.property('balance');
+    expect(account.balance.confirmed.toNumber()).to.be.above(0);
   });
 
 });
