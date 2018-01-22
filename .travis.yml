@@ -20,6 +20,7 @@ install:
   - npm install -g pm2
 
 before_script:
+    - echo NIS=http://bigalice2.nem.ninja:7890 > .env
     - sleep 30 && pm2 start index.js
 
 script:
