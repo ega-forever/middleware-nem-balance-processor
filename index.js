@@ -69,25 +69,28 @@ const init = async () => {
         return channel.ack(data);
 
       let unconfirmedTxs = await nis.getUnconfirmedTransactions(addr);
+
+
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
-          if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
-          {
-            return;
-          }
-
           if (addr === item.transaction.recipient) {
             result.val += item.transaction.amount;
+            return;
           }
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
             result.val -= item.transaction.amount;
+            if (item.transaction.unconfirmed)
+              result.val -= item.transaction.fee;
           }
           return result;
         }, {val: 0})
         .get('val')
         .value();
+
+      console.log('address: ', addr, 'delta: ', balanceDelta);
+      console.log(tx.hash);
 
       let accUpdateObj = balance ? {
         balance: {
@@ -144,13 +147,10 @@ const init = async () => {
         .value()
       );
 
-
       account = await accountModel.findOneAndUpdate({address: addr}, accUpdateObj, {new: true});
 
       let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
       let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics));
-
-
 
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,
