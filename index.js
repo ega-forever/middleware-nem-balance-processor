@@ -93,7 +93,7 @@ const init = async () => {
         balance: {
           confirmed: balance,
           vested: vestedBalance,
-          unconfirmed: balanceDelta ? balance + balanceDelta : 0
+          unconfirmed: balance + balanceDelta
         }
       } : {};
 
@@ -137,7 +137,7 @@ const init = async () => {
       _.merge(accUpdateObj, _.chain(commonKeys)
         .map(key => [
           [`mosaics.${key}.confirmed`, mosaicsConfirmed[key]],
-          [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || 0]
+          [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || mosaicsConfirmed[key]]
         ])
         .flatten()
         .fromPairs()
@@ -158,6 +158,7 @@ const init = async () => {
 
     } catch (e) {
       log.error(e);
+      return channel.nack(data);
     }
     channel.ack(data);
   });
