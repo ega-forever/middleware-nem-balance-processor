@@ -80,8 +80,7 @@ const init = async () => {
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
             result.val -= item.transaction.amount;
-            if (tx.unconfirmed && item.transaction.signature === tx.signature)
-              result.val -= item.transaction.fee;
+            result.val -= item.transaction.fee;
           }
           return result;
         }, {val: 0})
