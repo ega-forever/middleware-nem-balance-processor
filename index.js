@@ -70,7 +70,6 @@ const init = async () => {
 
       let unconfirmedTxs = await nis.getUnconfirmedTransactions(addr);
 
-
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
@@ -81,16 +80,12 @@ const init = async () => {
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
             result.val -= item.transaction.amount;
-            if (item.transaction.unconfirmed)
-              result.val -= item.transaction.fee;
+            result.val -= item.transaction.fee;
           }
           return result;
         }, {val: 0})
         .get('val')
         .value();
-
-      console.log('address: ', addr, 'delta: ', balanceDelta);
-      console.log(tx.hash);
 
       let accUpdateObj = balance ? {
         balance: {
