@@ -144,10 +144,13 @@ const init = async () => {
         .value()
       );
 
+
       account = await accountModel.findOneAndUpdate({address: addr}, accUpdateObj, {new: true});
 
-      let convertedBalance = utils.convertBalanceWithDivisibility(account.balance);
-      let convertedMosaics = await utils.convertMosaicsWithDivisibility(account.mosaics);
+      let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
+      let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics));
+
+
 
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,
