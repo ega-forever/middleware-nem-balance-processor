@@ -45,6 +45,7 @@ const Account = new mongoose.Schema({
     vested: {type: mongoose.Schema.Types.Long, default: 0}
   },
   created: {type: Date, required: true, default: Date.now},
+  isActive: {type: Boolean, required: true, default: true},
   mosaics: {type: mongoose.Schema.Types.Mixed, default: {}, set: setMosaics, get: getMosaics}
 }, {
   toObject: {getters: true},
