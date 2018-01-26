@@ -73,15 +73,20 @@ const init = async () => {
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
-          if (addr === item.transaction.recipient) {
+        const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
+
+          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics')) {
             result.val += item.transaction.amount;
-            return;
           }
 
-          if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
+          if (addr === sender && !_.has(item, 'transaction.mosaics')) {
             result.val -= item.transaction.amount;
+          }
+
+          if (addr === sender) {
             result.val -= item.transaction.fee;
           }
+
           return result;
         }, {val: 0})
         .get('val')
