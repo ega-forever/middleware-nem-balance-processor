@@ -69,21 +69,24 @@ const init = async () => {
         return channel.ack(data);
 
       let unconfirmedTxs = await nis.getUnconfirmedTransactions(addr);
+
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
-          if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
-          {
-            return;
-          }
+        const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
 
-          if (addr === item.transaction.recipient) {
+          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics')) {
             result.val += item.transaction.amount;
           }
 
-          if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
+          if (addr === sender && !_.has(item, 'transaction.mosaics')) {
             result.val -= item.transaction.amount;
           }
+
+          if (addr === sender) {
+            result.val -= item.transaction.fee;
+          }
+
           return result;
         }, {val: 0})
         .get('val')
@@ -93,7 +96,7 @@ const init = async () => {
         balance: {
           confirmed: balance,
           vested: vestedBalance,
-          unconfirmed: balanceDelta ? balance + balanceDelta : 0
+          unconfirmed: balance + balanceDelta
         }
       } : {};
 
@@ -137,7 +140,7 @@ const init = async () => {
       _.merge(accUpdateObj, _.chain(commonKeys)
         .map(key => [
           [`mosaics.${key}.confirmed`, mosaicsConfirmed[key]],
-          [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || 0]
+          [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || mosaicsConfirmed[key]]
         ])
         .flatten()
         .fromPairs()
@@ -146,8 +149,8 @@ const init = async () => {
 
       account = await accountModel.findOneAndUpdate({address: addr}, accUpdateObj, {new: true});
 
-      let convertedBalance = utils.convertBalanceWithDivisibility(account.balance);
-      let convertedMosaics = await utils.convertMosaicsWithDivisibility(account.mosaics);
+      let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
+      let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics));
 
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,
@@ -158,6 +161,7 @@ const init = async () => {
 
     } catch (e) {
       log.error(e);
+      return channel.nack(data);
     }
     channel.ack(data);
   });
