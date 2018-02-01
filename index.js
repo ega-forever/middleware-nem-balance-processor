@@ -73,26 +73,26 @@ const init = async () => {
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
-        const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
+          const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
 
-          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics')) {
+          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics')) 
             result.val += item.transaction.amount;
-          }
+          
 
-          if (addr === sender && !_.has(item, 'transaction.mosaics')) {
+          if (addr === sender && !_.has(item, 'transaction.mosaics')) 
             result.val -= item.transaction.amount;
-          }
+          
 
-          if (addr === sender) {
+          if (addr === sender) 
             result.val -= item.transaction.fee;
-          }
+          
 
           return result;
         }, {val: 0})
         .get('val')
         .value();
 
-      let accUpdateObj = balance ? {
+      let accUpdateObj = _.isNumber(balance) ? {
         balance: {
           confirmed: balance,
           vested: vestedBalance,
@@ -102,7 +102,7 @@ const init = async () => {
 
       let accMosaics = await nis.getMosaicsForAccount(addr);
       accMosaics = _.get(accMosaics, 'data', {});
-      const commonKeys = utils.intersectByMosaic(_.get(tx, 'mosaics'), accMosaics);
+      const allKeys = utils.intersectByMosaic(_.get(tx, 'mosaics'), accMosaics);
       const flattenedMosaics = utils.flattenMosaics(accMosaics);
 
       let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
@@ -110,36 +110,34 @@ const init = async () => {
         .transform((result, item) => {
 
           if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
-          {
             return;
-          }
 
-          if (addr === item.transaction.recipient) {
+          if (addr === item.transaction.recipient) 
             item.transaction.mosaics.forEach(mosaic => {
               result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity;
             });
 
-          }
+          
 
-          if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) {
+          if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network))
             item.transaction.mosaics.forEach(mosaic => {
               result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - mosaic.quantity;
             });
-          }
+
           return result;
         }, {})
-        .pick(commonKeys)
+        .pick(allKeys)
         .toPairs()
         .transform((result, pair) => {
           result[pair[0]] = (flattenedMosaics[pair[0]] || 0) + pair[1];
         }, {})
         .value();
 
-      let mosaicsConfirmed = _.pick(utils.flattenMosaics(accMosaics), commonKeys);
+      let mosaicsConfirmed = utils.flattenMosaics(accMosaics);
 
-      _.merge(accUpdateObj, _.chain(commonKeys)
+      _.merge(accUpdateObj, _.chain(allKeys)
         .map(key => [
-          [`mosaics.${key}.confirmed`, mosaicsConfirmed[key]],
+          [`mosaics.${key}.confirmed`, mosaicsConfirmed[key] || 0],
           [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || mosaicsConfirmed[key]]
         ])
         .flatten()
