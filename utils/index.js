@@ -13,7 +13,7 @@ const flattenMosaics = mosObj =>
   _.transform(mosObj, (acc, m) => acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity, {});
 
 const intersectByMosaic = (m1, m2) =>
-  _.intersection(_.keys(flattenMosaics(m1)), _.keys(flattenMosaics(m2)));
+  _.uniq([..._.keys(flattenMosaics(m1)), ..._.keys(flattenMosaics(m2))]);
 
 const convertBalanceWithDivisibility = (balance) => {
 
@@ -55,22 +55,22 @@ const convertMosaicsWithDivisibility = async (mosaics) => {
     let definition = await nis.getMosaicsDefinition(mosaic.namespaceId);
 
     mosaic.valueConfirmed = mosaic.quantity.confirmed / _.chain(definition)
-        .get('data')
-        .find({mosaic: {id: {name: mosaic.name}}})
-        .get('mosaic.properties')
-        .find({name: 'divisibility'})
-        .get('value', 1)
-        .thru(val => Math.pow(10, val))
-        .value();
+      .get('data')
+      .find({mosaic: {id: {name: mosaic.name}}})
+      .get('mosaic.properties')
+      .find({name: 'divisibility'})
+      .get('value', 1)
+      .thru(val => Math.pow(10, val))
+      .value();
 
     mosaic.valueUnconfirmed = mosaic.quantity.unconfirmed / _.chain(definition)
-        .get('data')
-        .find({mosaic: {id: {name: mosaic.name}}})
-        .get('mosaic.properties')
-        .find({name: 'divisibility'})
-        .get('value', 1)
-        .thru(val => Math.pow(10, val))
-        .value();
+      .get('data')
+      .find({mosaic: {id: {name: mosaic.name}}})
+      .get('mosaic.properties')
+      .find({name: 'divisibility'})
+      .get('value', 1)
+      .thru(val => Math.pow(10, val))
+      .value();
 
     return mosaic;
   });
