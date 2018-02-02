@@ -75,17 +75,14 @@ const init = async () => {
 
           const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
 
-          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics')) 
+          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics'))
             result.val += item.transaction.amount;
-          
 
-          if (addr === sender && !_.has(item, 'transaction.mosaics')) 
+          if (addr === sender && !_.has(item, 'transaction.mosaics'))
             result.val -= item.transaction.amount;
-          
 
-          if (addr === sender) 
+          if (addr === sender)
             result.val -= item.transaction.fee;
-          
 
           return result;
         }, {val: 0})
@@ -112,12 +109,10 @@ const init = async () => {
           if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
             return;
 
-          if (addr === item.transaction.recipient) 
+          if (addr === item.transaction.recipient)
             item.transaction.mosaics.forEach(mosaic => {
               result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity;
             });
-
-          
 
           if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network))
             item.transaction.mosaics.forEach(mosaic => {
@@ -135,17 +130,19 @@ const init = async () => {
 
       let mosaicsConfirmed = utils.flattenMosaics(accMosaics);
 
-      _.merge(accUpdateObj, _.chain(allKeys)
-        .map(key => [
-          [`mosaics.${key}.confirmed`, mosaicsConfirmed[key] || 0],
-          [`mosaics.${key}.unconfirmed`, mosaicsUnconfirmed[key] || mosaicsConfirmed[key]]
-        ])
-        .flatten()
-        .fromPairs()
-        .value()
+      _.merge(accUpdateObj, {mosaics: account.mosaics}, {
+          mosaics: _.chain(allKeys)
+            .transform((result, key) => {
+              result[key] = {
+                confirmed: mosaicsConfirmed[key] || 0,
+                unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
+              }
+            }, {})
+            .value()
+        }
       );
 
-      account = await accountModel.findOneAndUpdate({address: addr}, accUpdateObj, {new: true});
+      account = await accountModel.findOneAndUpdate({address: addr}, {$set: accUpdateObj}, {new: true});
 
       let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
       let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics));
