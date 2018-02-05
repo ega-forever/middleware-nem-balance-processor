@@ -10,10 +10,13 @@ const _ = require('lodash'),
   nis = require('../services/nisRequestService');
 
 const flattenMosaics = mosObj =>
-  _.transform(mosObj, (acc, m) => acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity, {});
+  _.transform(mosObj, (acc, m) => {
+    if (m.mosaicId && m.mosaicId.namespaceId)
+      acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity;
+  }, {});
 
 const intersectByMosaic = (m1, m2) =>
-  _.intersection(_.keys(flattenMosaics(m1)), _.keys(flattenMosaics(m2)));
+  _.uniq([..._.keys(flattenMosaics(m1)), ..._.keys(flattenMosaics(m2))]);
 
 const convertBalanceWithDivisibility = (balance) => {
 
