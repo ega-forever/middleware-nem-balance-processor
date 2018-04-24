@@ -1,27 +1,23 @@
 {
-  "name": "middleware-nem-blockprocessor",
+  "name": "middleware-nem-balanceProcessor",
   "version": "0.0.1",
-  "description": "Middleware NEM blockprocessor",
+  "description": "Middleware NEM balanceProcessor",
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
     "test": "node ./node_modules/mocha/bin/mocha -t 90000 tests"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ChronoBank/middleware-nem-blockprocessor.git"
-  },
   "keywords": [
     "chronobank",
     "middleware",
-    "blockprocessor"
+    "balanceProcessor"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "chronobank",
+  "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/ChronoBank/middleware-nem-blockprocessor/issues"
+    "url": "https://github.com/ChronoBank/middleware-nem-balance-processor/issues"
   },
-  "homepage": "https://github.com/ChronoBank/middleware-nem-blockprocessor#readme",
+  "homepage": "https://github.com/ChronoBank/middleware-nem-balance-processor#readme",
   "devDependencies": {
     "babel-eslint": "^8.0.1",
     "chai": "^4.1.2",
@@ -38,6 +34,7 @@
     "lodash": "^4.17.4",
     "mongoose": "^4.13.7",
     "mongoose-long": "^0.1.1",
+    "middleware-nem-blockprocessor": "github:chronobank/middleware-nem-blockprocessor",    
     "nem-sdk": "^1.6.2",
     "request": "^2.83.0",
     "request-promise": "^4.2.2"
