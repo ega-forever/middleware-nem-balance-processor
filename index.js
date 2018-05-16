@@ -20,8 +20,9 @@ const _ = require('lodash'),
   config = require('./config'),
   nem = require('nem-sdk').default,
   utils = require('./utils'),
-  nis = require('./services/nisRequestService'),
+  requestsService = require('./services/nisRequestService'),
   accountModel = require('./models/accountModel'),
+  ProviderService = require('./services/providerService'),
   log = bunyan.createLogger({name: 'nem-balance-processor'});
 
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
@@ -57,6 +58,12 @@ const init = async () => {
     channel = await conn.createChannel();
   }
 
+  const providerService = new ProviderService(channel, config.node.providers, config.rabbit.serviceName);
+  await providerService.start();
+  const provider = await providerService.getProvider();
+
+  const nis = requestsService(providerService);
+
   channel.prefetch(2);
 
   channel.consume(`${config.rabbit.serviceName}.balance_processor`, async (data) => {
@@ -77,7 +84,7 @@ const init = async () => {
       let balanceDelta = _.chain(unconfirmedTxs.data)
         .transform((result, item) => {
 
-          const sender = nem.model.address.toAddress(item.transaction.signer, config.nis.network);
+          const sender = nem.model.address.toAddress(item.transaction.signer, config.node.network);
 
           if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics'))
             result.val += item.transaction.amount;
@@ -110,7 +117,7 @@ const init = async () => {
         .filter(item => _.has(item, 'transaction.mosaics'))
         .transform((result, item) => {
 
-          if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.nis.network)) //self transfer
+          if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.node.network)) //self transfer
             return;
 
           if (addr === item.transaction.recipient)
@@ -118,7 +125,7 @@ const init = async () => {
               result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity;
             });
 
-          if (addr === nem.model.address.toAddress(item.transaction.signer, config.nis.network))
+          if (addr === nem.model.address.toAddress(item.transaction.signer, config.node.network))
             item.transaction.mosaics.forEach(mosaic => {
               result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - mosaic.quantity;
             });
