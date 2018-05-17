@@ -60,10 +60,9 @@ const init = async () => {
 
   const providerService = new ProviderService(channel, config.node.providers, config.rabbit.serviceName);
   await providerService.start();
-  const provider = await providerService.getProvider();
+  await providerService.selectProvider();
 
   const nis = requestsService(providerService);
-
   channel.prefetch(2);
 
   channel.consume(`${config.rabbit.serviceName}.balance_processor`, async (data) => {
@@ -142,21 +141,20 @@ const init = async () => {
       let mosaicsConfirmed = utils.flattenMosaics(accMosaics);
 
       _.merge(accUpdateObj, {mosaics: account.mosaics}, {
-          mosaics: _.chain(allKeys)
-            .transform((result, key) => {
-              result[key] = {
-                confirmed: mosaicsConfirmed[key] || 0,
-                unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
-              }
-            }, {})
-            .value()
-        }
-      );
+        mosaics: _.chain(allKeys)
+          .transform((result, key) => {
+            result[key] = {
+              confirmed: mosaicsConfirmed[key] || 0,
+              unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
+            };
+          }, {})
+          .value()
+      });
 
       account = await accountModel.findOneAndUpdate({address: addr}, {$set: accUpdateObj}, {new: true});
 
       let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
-      let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics));
+      let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics), nis);
 
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,

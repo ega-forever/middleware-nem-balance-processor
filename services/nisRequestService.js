@@ -4,9 +4,7 @@
 * @author Kirill Sergeev <cloudkserg11@gmail.com>
 */
 const request = require('request-promise'),
-  _ = require('lodash'),
-  {URL} = require('url'),
-  Promise = require('bluebird');
+  {URL} = require('url');
 
 const makeRequest = (url, method, body) => {
   const options = {
@@ -54,14 +52,14 @@ module.exports = (providerService) => {
       return get(`/namespace/mosaic/definition/page?namespace=${id}`);
     },
     async getAccount (addr) { 
-      return get(`/account/get?address=${addr}`)
+      return get(`/account/get?address=${addr}`);
     },
     async getUnconfirmedTransactions (addr) {
-      return get(`/account/unconfirmedTransactions?address=${addr}`)
+      return get(`/account/unconfirmedTransactions?address=${addr}`);
     },
 
     async getBlock (blockHeight) {
-      return post('/block/at/public', {height: blockHeight})
+      return post('/block/at/public', {height: blockHeight});
     }
     
   };

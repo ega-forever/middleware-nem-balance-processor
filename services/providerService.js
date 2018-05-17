@@ -20,7 +20,7 @@ class ProviderService {
 
   createProviders (configProviders) {
     return _.map(configProviders, (configProvider, key) => {
-      return new Provider(configProvider.key, configProvider.ws, configProvider.http, 0);
+      return new Provider(key, configProvider.ws, configProvider.http, 0);
     });
   }
 
@@ -45,7 +45,7 @@ class ProviderService {
    * @memberOf ProviderService
    */
   async start () {
-    await this.channel.assertQueue(`${this.rabbitPrefix}_balance_provider`, {autoDelete: true});
+    await this.channel.assertQueue(`${this.rabbitPrefix}_balance_provider`);
     await this.channel.bindQueue(`${this.rabbitPrefix}_balance_provider`, 'events', `${this.rabbitPrefix}_provider`);
     this.channel.consume(`${this.rabbitPrefix}_balance_provider`, async (message) => {
       this.chooseProvider(message.content.toString()); 
@@ -76,13 +76,10 @@ class ProviderService {
   async checkOnWhat () {
     await this.channel.assertQueue(`${this.rabbitPrefix}_balance_check_what_provider`, {autoDelete: true, durable: false});
     await this.channel.bindQueue(`${this.rabbitPrefix}_balance_check_what_provider`, 'events', `${this.rabbitPrefix}_provider`);
-    return await new Promise(res => {
-      this.channel.consume(`${this.rabbitPrefix}_balance_check_what_provider`, async (message) => {
-        this.chooseProvider(message.content.toString()); 
-        await this.channel.cancel(message.fields.consumerTag);
-        res();
-      }, {noAck: true});
-    }).timeout(10000);
+    await Promise.delay(3000);
+    if (!this._provider) 
+      throw new Error('not found provider'); 
+    
   }
 
 }

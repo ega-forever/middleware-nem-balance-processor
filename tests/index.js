@@ -83,7 +83,7 @@ describe('core/balance processor', function () {
           channel.consume(`app_${config.rabbit.serviceName}_test.balance`, () => {
             amqpInstance.close();
             res();
-          }, {noAck: true})
+          }, {noAck: true});
         });
       })()
     ]);
