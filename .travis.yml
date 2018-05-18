@@ -27,7 +27,7 @@ before_script:
       if [ "$TRAVIS_BRANCH" == "master" ]; then
         cd $TRAVIS_BUILD_DIR/ && git clone https://github.com/chronobank/middleware-nem-blockprocessor 
       else
-        cd $TRAVIS_BUILD_DIR/ && git clone -b feature/MD-338 https://github.com/cloudkserg/middleware-nem-blockprocessor 
+        cd $TRAVIS_BUILD_DIR/ && git clone -b feature/MD-352 https://github.com/cloudkserg/middleware-nem-blockprocessor 
       fi;
     - cd $TRAVIS_BUILD_DIR/middleware-nem-blockprocessor && npm install
     - sleep 30 && cd $TRAVIS_BUILD_DIR/middleware-nem-blockprocessor && pm2 start index.js
