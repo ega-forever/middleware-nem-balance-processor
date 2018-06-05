@@ -24,9 +24,16 @@ for changed accounts. After middleware send message throught rabbitmq with the f
   { confirmed: { value: [Long], amount: '110818.180900' },
     unconfirmed: { value: [Long], amount: '110818.180900' },
     vested: { value: [Long], amount: '110241.162911' } },
- mosaics:
-  { 'prx:xpx': { confirmed: [Object], unconfirmed: [Object] },
-    'nem:xem': { confirmed: [Object], unconfirmed: [Object] } },
+ mosaics: {
+    "prx:xpx" : {
+        "unconfirmed" : 9997989670.0,
+        "confirmed" : 9997989670.0
+    },
+    "nem:xem" : {
+        "unconfirmed" : 110818180900.0,
+        "confirmed" : 110818180900.0
+    }
+},
  tx:
   { timeStamp: 389582,
     amount: 10000000000000,
