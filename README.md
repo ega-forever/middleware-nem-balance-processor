@@ -12,6 +12,43 @@ This module is a part of middleware services. You can install it in 2 ways:
 ##### About
 This module is used for updating balances for the specified addresses (see a description of addresses manipulation in [rest module](https://github.com/ChronoBank/middleware-nem-rest)).
 
+#### How does it work?
+
+Block processor send message about transaction through rabbitmq to this middleware. Then middleware update balance and assets
+for changed accounts. After middleware send message throught rabbitmq with the following format:
+
+```
+{ 
+ address: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
+ balance:
+  { confirmed: { value: [Long], amount: '110818.180900' },
+    unconfirmed: { value: [Long], amount: '110818.180900' },
+    vested: { value: [Long], amount: '110241.162911' } },
+ mosaics: {
+    "prx:xpx" : {
+        "unconfirmed" : 9997989670.0,
+        "confirmed" : 9997989670.0
+    },
+    "nem:xem" : {
+        "unconfirmed" : 110818180900.0,
+        "confirmed" : 110818180900.0
+    }
+},
+ tx:
+  { timeStamp: 389582,
+    amount: 10000000000000,
+    signature: '72da7b981c9dac6845169fb6f81e410b352c83eefc030ecd903b5b24bd84d0b2c04f991914a9e83784d5ba8883143c770ee317cacec116de104b67b1c0837c08',
+    fee: 154000000,
+    recipient: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
+    type: 257,
+    deadline: 393182,
+    message: {},
+    version: -1744830463,
+    signer: 'f60ab8a28a42637062e6ed43a20793735c58cb3e8f3a0ab74148d591a82eba4d' } 
+ }
+```
+
+
 ##### сonfigure your .env
 
 To apply your configuration, create a .env file in root folder of repo (in case it's not present already).
