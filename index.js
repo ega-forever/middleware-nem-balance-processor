@@ -11,7 +11,6 @@
  * Licensed under the AGPL Version 3 license.
  * @author Kirill Sergeev <cloudkserg11@gmail.com>
  */
-
 const _ = require('lodash'),
   Promise = require('bluebird'),
   mongoose = require('mongoose'),
