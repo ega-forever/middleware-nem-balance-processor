@@ -13,6 +13,7 @@ const config = require('../config'),
 mongoose.Promise = Promise;
 mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
+
 const expect = require('chai').expect,
   Provider = require('../models/provider'),
   nis = require('../services/nisRequestService')({
@@ -24,11 +25,27 @@ const expect = require('chai').expect,
   amqp = require('amqplib'),
   ctx = {};
 
-describe('core/balance processor', function () {
+let amqpInstance;
 
-  after(() => {
-    return mongoose.disconnect();
+describe('core/balance processor', function () {
+  before(async () => {
+    await accountModel.remove();
   });
+
+  after(async () => {
+    return await mongoose.disconnect(); 
+  });
+
+  beforeEach(async () => {
+    amqpInstance = await amqp.connect(config.rabbit.url);
+  });
+
+  afterEach(async () => {
+    await amqpInstance.close();
+  });
+
+
+
 
   it('find first block with transactions', async () => {
 
@@ -57,22 +74,46 @@ describe('core/balance processor', function () {
     expect(ctx.tx).to.have.property('recipient');
   });
 
+
   it('add recipient from first tx of found block', async () => {
-    await new accountModel({address: ctx.tx.recipient}).save();
+    await accountModel.update({address: ctx.tx.recipient}, {$set: {address: ctx.tx.recipient}}, {
+      upsert: true,
+      setDefaultsOnInsert: true
+    });
   });
 
-  it('validate notification via amqp about new tx', async () => {
+  it('send message about new account and check this balance', async () => {
+    let account = await accountModel.findOne({address: ctx.tx.recipient});
+    expect(account.balance.confirmed.toNumber()).to.be.equal(0);
+    expect(account.balance.unconfirmed.toNumber()).to.be.equal(0);
+    expect(account.balance.vested.toNumber()).to.be.equal(0);
 
-    let amqpInstance = await amqp.connect(config.rabbit.url);
+    const channel = await amqpInstance.createChannel(); 
+    await channel.assertExchange('internal', 'topic', {durable: false});
+    await channel.publish('internal', `${config.rabbit.serviceName}_user.created`, 
+      new Buffer(JSON.stringify({
+        address: ctx.tx.recipient
+      }))
+    );
+    await Promise.delay(4000);
+    account = await accountModel.findOne({address: ctx.tx.recipient});
+
+    expect(account.balance.confirmed.toNumber()).to.be.greaterThan(0);
+    expect(account.balance.unconfirmed.toNumber()).to.be.greaterThan(0);
+    expect(account.balance.vested.toNumber()).to.be.greaterThan(0);
+    
+  });
+
+
+
+  it('validate notification via amqp about new tx', async () => {
     let channel = await amqpInstance.createChannel();
 
-    try {
-      await channel.assertExchange('events', 'topic', {durable: false});
-      await channel.assertQueue(`${config.rabbit.serviceName}_test.balance`);
-      await channel.bindQueue(`${config.rabbit.serviceName}_test.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.tx.recipient}`);
-    } catch (e) {
-      channel = await amqpInstance.createChannel();
-    }
+
+    await channel.assertExchange('events', 'topic', {durable: false});
+    await channel.assertQueue(`${config.rabbit.serviceName}_test.balance`);
+    await channel.bindQueue(`${config.rabbit.serviceName}_test.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.tx.recipient}`);
+
 
     return Promise.all([
       (async () => {
@@ -80,8 +121,7 @@ describe('core/balance processor', function () {
       })(),
       (async () => {
         return await new Promise(res => {
-          channel.consume(`app_${config.rabbit.serviceName}_test.balance`, () => {
-            amqpInstance.close();
+          channel.consume(`${config.rabbit.serviceName}_test.balance`, () => {
             res();
           }, {noAck: true});
         });

@@ -18,11 +18,12 @@ const _ = require('lodash'),
   bunyan = require('bunyan'),
   amqp = require('amqplib'),
   config = require('./config'),
-  nem = require('nem-sdk').default,
+  updateBalance = require('./utils/updateBalance'),
   utils = require('./utils'),
   requestsService = require('./services/nisRequestService'),
   accountModel = require('./models/accountModel'),
   ProviderService = require('./services/providerService'),
+  UserCreatedService = require('./services/UserCreatedService'),
   log = bunyan.createLogger({name: 'nem-balance-processor'});
 
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
@@ -63,99 +64,37 @@ const init = async () => {
   await providerService.selectProvider();
 
   const nis = requestsService(providerService);
+
+  const userCreatedService = new UserCreatedService(
+    nis, config.node.network, channel, config.rabbit.serviceName
+  );
+  await userCreatedService.start();
+
+
   channel.prefetch(2);
 
   channel.consume(`${config.rabbit.serviceName}.balance_processor`, async (data) => {
     try {
       const tx = JSON.parse(data.content.toString()),
-        addr = data.fields.routingKey.slice(TX_QUEUE.length + 1),
-        accObj = await nis.getAccount(addr),
-        balance = _.get(accObj, 'account.balance'),
-        vestedBalance = _.get(accObj, 'account.vestedBalance');
+        addr = data.fields.routingKey.slice(TX_QUEUE.length + 1);
 
       let account = await accountModel.findOne({address: addr});
-
+      
       if (!account)
         return channel.ack(data);
 
-      let unconfirmedTxs = await nis.getUnconfirmedTransactions(addr);
+      account = await updateBalance(
+        nis,
+        account.address, 
+        _.get(account, 'mosaics', {}), 
+        config.node.network, 
+        tx
+      );
 
-      let balanceDelta = _.chain(unconfirmedTxs.data)
-        .transform((result, item) => {
+      let convertedBalance = utils.convertBalanceWithDivisibility(account.balance);
+      let convertedMosaics = await utils.convertMosaicsWithDivisibility(account.mosaics, nis);
 
-          const sender = nem.model.address.toAddress(item.transaction.signer, config.node.network);
-
-          if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics'))
-            result.val += item.transaction.amount;
-
-          if (addr === sender && !_.has(item, 'transaction.mosaics'))
-            result.val -= item.transaction.amount;
-
-          if (addr === sender)
-            result.val -= item.transaction.fee;
-
-          return result;
-        }, {val: 0})
-        .get('val')
-        .value();
-
-      let accUpdateObj = _.isNumber(balance) ? {
-        balance: {
-          confirmed: balance,
-          vested: vestedBalance,
-          unconfirmed: balance + balanceDelta
-        }
-      } : {};
-
-      let accMosaics = await nis.getMosaicsForAccount(addr);
-      accMosaics = _.get(accMosaics, 'data', {});
-      const allKeys = utils.intersectByMosaic(_.get(tx, 'mosaics'), accMosaics);
-      const flattenedMosaics = utils.flattenMosaics(accMosaics);
-
-      let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
-        .filter(item => _.has(item, 'transaction.mosaics'))
-        .transform((result, item) => {
-
-          if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.node.network)) //self transfer
-            return;
-
-          if (addr === item.transaction.recipient)
-            item.transaction.mosaics.forEach(mosaic => {
-              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + mosaic.quantity;
-            });
-
-          if (addr === nem.model.address.toAddress(item.transaction.signer, config.node.network))
-            item.transaction.mosaics.forEach(mosaic => {
-              result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - mosaic.quantity;
-            });
-
-          return result;
-        }, {})
-        .pick(allKeys)
-        .toPairs()
-        .transform((result, pair) => {
-          result[pair[0]] = (flattenedMosaics[pair[0]] || 0) + pair[1];
-        }, {})
-        .value();
-
-      let mosaicsConfirmed = utils.flattenMosaics(accMosaics);
-
-      _.merge(accUpdateObj, {mosaics: account.mosaics}, {
-        mosaics: _.chain(allKeys)
-          .transform((result, key) => {
-            result[key] = {
-              confirmed: mosaicsConfirmed[key] || 0,
-              unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
-            };
-          }, {})
-          .value()
-      });
-
-      account = await accountModel.findOneAndUpdate({address: addr}, {$set: accUpdateObj}, {new: true});
-
-      let convertedBalance = utils.convertBalanceWithDivisibility(_.merge(account.balance, accUpdateObj.balance));
-      let convertedMosaics = await utils.convertMosaicsWithDivisibility(_.merge(account.mosaics, accUpdateObj.mosaics), nis);
-
+      
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify({
         address: addr,
         balance: convertedBalance,
