@@ -74,7 +74,7 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, network
     .value();
 
 
-  return _.merge({mosaics: initMosaics}, {
+  return _.merge({mosaics: initMosaics || {}}, {
     mosaics: _.chain(allKeys)
       .transform((result, key) => {
         result[key] = {
@@ -88,7 +88,7 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, network
 
 
 
-module.exports = async (nis, address, initMosaics, network, tx) => {
+module.exports = async (nis, address, initMosaics = {}, network, tx) => {
   const accObj = await nis.getAccount(address),
     balance = _.get(accObj, 'account.balance'),
     vestedBalance = _.get(accObj, 'account.vestedBalance'),
@@ -103,7 +103,7 @@ module.exports = async (nis, address, initMosaics, network, tx) => {
   } : {};
 
   const nisMosaics = await nis.getMosaicsForAccount(address);
-  accUpdateObj['mosaics'] = getMosaics(
+  accUpdateObj['mosaics'] = await getMosaics(
     nisMosaics, address, initMosaics, unconfirmedTxs, network, tx
   );
 
