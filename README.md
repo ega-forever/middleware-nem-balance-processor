@@ -12,6 +12,63 @@ This module is a part of middleware services. You can install it in 2 ways:
 ##### About
 This module is used for updating balances for the specified addresses (see a description of addresses manipulation in [rest module](https://github.com/ChronoBank/middleware-nem-rest)).
 
+#### How does it work?
+
+Block processor send message about transaction through rabbitmq to this middleware. Then middleware update balance and assets
+for changed accounts. After middleware send message throught rabbitmq with the following format:
+
+```
+{ 
+ address: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
+ balance: {
+     vested: '1028000004446500',
+     confirmed: '1028000004216500',
+     unconfirmed: '1028000004216600'
+ }
+ assets: { 
+    "nem:xem" : {
+        "unconfirmed" : 6099957,
+        "confirmed" : 6099957
+    }
+},
+ tx: {
+    blockNumber: 1494527,
+    timeStamp: 100607022,
+    amount: 1,
+    hash: '7cca311d117c9e67c658513ac032219945115af437928552f99ed03d5d3accae',
+    recipient: 'TAHZD4PLMR4OX3OLNMJCC726PNLXCJMCFWR2JI3D',
+    fee: 100000,
+    messagePayload: '48656c6c6f',
+    messageType: 1,
+    mosaics: null,
+    sender: 'TAX7OUHMQSTDXOMYJIKHFILRKOLVYGECG47FPKGQ',
+    address: 'TAHZD4PLMR4OX3OLNMJCC726PNLXCJMCFWR2JI3D' 
+ }
+}
+```
+
+### Update user balance, when created
+
+When user is created new in database, while not get transaction with this account,
+him balance not updated.
+That fixed this problem, need to send message to rabbit mq after created user
+in database
+
+exchange name
+```
+internal
+```
+
+queue name
+```
+<config_rabbit_service_name>_user.created
+```
+
+message structure, where address is user address, that created in db
+```
+{address: <String>}
+```
+
 ##### сonfigure your .env
 
 To apply your configuration, create a .env file in root folder of repo (in case it's not present already).
