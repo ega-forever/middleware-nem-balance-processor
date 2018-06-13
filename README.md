@@ -20,10 +20,11 @@ for changed accounts. After middleware send message throught rabbitmq with the f
 ```
 { 
  address: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
- balance:
-  { confirmed: { value: [Long], amount: '110818.180900' },
-    unconfirmed: { value: [Long], amount: '110818.180900' },
-    vested: { value: [Long], amount: '110241.162911' } },
+ balance: {
+    "unconfirmed" : 110818180900,
+    "vested" : 110241162911,
+    "confirmed" : 110818180900
+ },
  mosaics: {
     "prx:xpx" : {
         "unconfirmed" : 9997989670.0,
