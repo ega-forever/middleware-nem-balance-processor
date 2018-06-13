@@ -98,9 +98,9 @@ describe('core/balance processor', function () {
     await Promise.delay(4000);
     account = await accountModel.findOne({address: ctx.tx.recipient});
 
-    expect(account.balance.confirmed.toNumber()).to.be.greaterThan(0);
-    expect(account.balance.unconfirmed.toNumber()).to.be.greaterThan(0);
-    expect(account.balance.vested.toNumber()).to.be.greaterThan(0);
+    expect(account.balance.confirmed.toNumber()).to.be.not.equal(0);
+    expect(account.balance.unconfirmed.toNumber()).to.be.not.equal(0);
+    expect(account.balance.vested.toNumber()).to.be.not.equal(0);
     
   });
 
