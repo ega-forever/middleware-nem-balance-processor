@@ -69,6 +69,7 @@ message structure, where address is user address, that created in db
 {address: <String>}
 ```
 
+
 ##### сonfigure your .env
 
 To apply your configuration, create a .env file in root folder of repo (in case it's not present already).
