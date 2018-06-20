@@ -38,7 +38,7 @@ class ProviderService {
   }
 
   async sendWhatProviderEvent () {
-    await this.channel.publish('events', `${this.rabbitPrefix}_what_provider`, new Buffer('what'));
+    await this.channel.publish('internal', `${this.rabbitPrefix}_current_provider.get`, new Buffer('what'));
   }
 
   /**
@@ -46,9 +46,10 @@ class ProviderService {
    */
   async start () {
     await this.channel.assertQueue(`${this.rabbitPrefix}_balance_provider`);
-    await this.channel.bindQueue(`${this.rabbitPrefix}_balance_provider`, 'events', `${this.rabbitPrefix}_provider`);
+    await this.channel.bindQueue(`${this.rabbitPrefix}_balance_provider`, 'internal', `${this.rabbitPrefix}_current_provider.set`);
     this.channel.consume(`${this.rabbitPrefix}_balance_provider`, async (message) => {
-      this.chooseProvider(message.content.toString()); 
+      message = JSON.parse(message.content.toString());
+      this.chooseProvider(message.index);
     }, {noAck: true});
   }
 
@@ -74,8 +75,8 @@ class ProviderService {
   }
 
   async checkOnWhat () {
-    await this.channel.assertQueue(`${this.rabbitPrefix}_balance_check_what_provider`, {autoDelete: true, durable: false});
-    await this.channel.bindQueue(`${this.rabbitPrefix}_balance_check_what_provider`, 'events', `${this.rabbitPrefix}_provider`);
+    await this.channel.assertQueue(`${this.rabbitPrefix}_current_provider.get`, {durable: false});
+    await this.channel.bindQueue(`${this.rabbitPrefix}_current_provider.get`, 'internal', `${this.rabbitPrefix}_current_provider.get`);
     await Promise.delay(3000);
     if (!this._provider) 
       throw new Error('not found provider'); 
