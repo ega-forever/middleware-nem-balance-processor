@@ -6,8 +6,12 @@
 require('dotenv').config();
 const config = require('../../config');
 
-config['dev'] = {
-  accounts: [process.env.ADDRESS_ONE ,process.env.ADDRESS_TWO]
+config.dev = {
+  accounts: [process.env.ADDRESS_ONE ,process.env.ADDRESS_TWO],
+  targeProxy: {
+    http: 'http://192.3.61.243:7890', //todo
+    ws: 'http://192.3.61.243:7778'
+  }
 };
 
 module.exports =  config;

@@ -1,88 +1,126 @@
-/** 
-* Copyright 2017–2018, LaborX PTY
-* Licensed under the AGPL Version 3 license.
-* @author Kirill Sergeev <cloudkserg11@gmail.com>
-*/
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
 
-const _ = require('lodash'),
-  bunyan = require('bunyan'),
+const bunyan = require('bunyan'),
+  config = require('../config'),
+  Api = require('../utils/api/Api'),
+  sem = require('semaphore')(1),
+  uniqid = require('uniqid'),
+  providerServiceInterface = require('middleware-common-components/interfaces/blockProcessor/providerServiceInterface'),
   Promise = require('bluebird'),
-  log = bunyan.createLogger({name: 'nem.balanceProcessor.providerService'}),
-  Provider = require('../models/provider');
+  EventEmitter = require('events'),
+  log = bunyan.createLogger({name: 'app.services.providerService'});
+
+/**
+ * @service
+ * @description the service for handling connection to node
+ * @returns Object<ProviderService>
+ */
 
 class ProviderService {
-  constructor (channel, configProviders, rabbitPrefix) {
-    this.channel = channel;
-    this.providers = this.createProviders(configProviders);
-    this.rabbitPrefix = rabbitPrefix;
-  }
 
-
-  createProviders (configProviders) {
-    return _.map(configProviders, (configProvider, key) => {
-      return new Provider(key, configProvider.ws, configProvider.http, 0);
-    });
+  constructor() {
+    this.events = new EventEmitter();
+    this.connector = null;
+    this.id = uniqid();
   }
 
   /**
-   * 
-   * 
-   * @returns {Promise return Provider}
-   * 
-   * @memberOf ProviderService
+   * @function
+   * @description set rabbitmqChannel
+   * @param rabbitmqChannel
+   * @return {Promise<void>}
    */
-  async getProvider () {
-    if (this._provider === undefined)
-      await this.selectProvider();
-    return this._provider;
+  async setRabbitmqChannel(rabbitmqChannel) {
+    this.rabbitmqChannel = rabbitmqChannel;
+    await rabbitmqChannel.assertQueue(`${config.rabbit.serviceName}_balance_provider.${this.id}`, {durable: false});
+    await rabbitmqChannel.bindQueue(`${config.rabbit.serviceName}_balance_provider.${this.id}`, 'internal', `${config.rabbit.serviceName}_current_provider.set`);
+    this._startListenProviderUpdates();
   }
 
-  async sendWhatProviderEvent () {
-    await this.channel.publish('internal', `${this.rabbitPrefix}_current_provider.get`, new Buffer('what'));
+  /** @function
+   * @description reset the current connection
+   * @return {Promise<void>}
+   */
+  async resetConnector() {
+    this.connector = null;
+    this.switchConnector();
+    this.events.emit('disconnected');
   }
+
 
   /**
-   * @memberOf ProviderService
+   * @function
+   * @description start listen for provider updates from block processor
+   * @return {Promise<void>}
+   * @private
    */
-  async start () {
-    await this.channel.assertQueue(`${this.rabbitPrefix}_balance_provider`);
-    await this.channel.bindQueue(`${this.rabbitPrefix}_balance_provider`, 'internal', `${this.rabbitPrefix}_current_provider.set`);
-    this.channel.consume(`${this.rabbitPrefix}_balance_provider`, async (message) => {
+  _startListenProviderUpdates() {
+
+    this.rabbitmqChannel.consume(`${config.rabbit.serviceName}_balance_provider.${this.id}`, async (message) => {
       message = JSON.parse(message.content.toString());
-      this.chooseProvider(message.index);
-    }, {noAck: true});
-  }
+      const providerURI = config.node.providers[message.index];
 
-  chooseProvider (key) {
-    if (!this.providers[key]) {
-      log.error('not found provider for key from block_processor[through rabbit mq] key = ' + key);
-      process.exit(0);
-    }
-    log.info('select provider: ' + this.providers[key].getHttp());
-    this._provider = this.providers[key];
+      if (this.connector && this.connector.http === providerURI.http)
+        return;
+
+      if(this.connector)
+        this.connector.wsProvider.disconnect();
+
+      this.connector = new Api(providerURI);
+      await this.connector.openWSProvider();
+
+      this.connector.events.on('disconnect', () => this.resetConnector());
+      this.events.emit('provider_set');
+    }, {noAck: true});
+
   }
 
   /**
-   * 
-   * @memberOf ProviderService
+   * @function
+   * @description choose the connector
+   * @return {Promise<null|*>}
    */
-  async selectProvider () {
-    await this.sendWhatProviderEvent();
-    await this.checkOnWhat().catch(e => {
-      log.error('block_processor not exist or not send info about provider, info:' + e);
+  async switchConnector() {
+
+    await new Promise(res => {
+      this.events.once('provider_set', res);
+      this.rabbitmqChannel.publish('internal', `${config.rabbit.serviceName}_current_provider.get`, new Buffer(JSON.stringify({})));
+    }).timeout(10000).catch(() => {
+      log.error('provider hasn\'t been chosen');
       process.exit(0);
+    });
+
+    return this.connector;
+  }
+
+  /**
+   * @function
+   * @description safe connector switching, by moving requests to
+   * @return {Promise<bluebird>}
+   */
+  async switchConnectorSafe() {
+    return new Promise(res => {
+      sem.take(async () => {
+        await this.switchConnector();
+        res(this.connector);
+        sem.leave();
+      });
     });
   }
 
-  async checkOnWhat () {
-    await this.channel.assertQueue(`${this.rabbitPrefix}_current_provider.get`, {durable: false});
-    await this.channel.bindQueue(`${this.rabbitPrefix}_current_provider.get`, 'internal', `${this.rabbitPrefix}_current_provider.get`);
-    await Promise.delay(3000);
-    if (!this._provider) 
-      throw new Error('not found provider'); 
-    
+  /**
+   * @function
+   * @description
+   * @return {Promise<*|bluebird>}
+   */
+  async get() {
+    return this.connector || await this.switchConnectorSafe();
   }
 
 }
 
-module.exports = ProviderService;
+module.exports = providerServiceInterface(new ProviderService());

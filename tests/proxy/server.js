@@ -6,37 +6,23 @@
 const httpProxy = require('http-proxy'),
   config = require('../config'),
   bunyan = require('bunyan'),
-  log = bunyan.createLogger({name: 'app.proxy'}),
-  amqp = require('amqplib');
+  log = bunyan.createLogger({name: 'app.proxy'});
 
 // create a server
-const provider = config.node.providers[2];
+const provider = config.dev.targeProxy;
 
 if (!process.argv[2] || !process.argv[3]) {
   log.error('not set argument 2 as port for proxy/server.js');
   process.exit(0);
 }
 
-const sendMessage = async (message) => {
-  const amqpInstance = await amqp.connect(config.rabbit.url);
-  const channel = await amqpInstance.createChannel();  
-
-  channel.publish('events', `${config.rabbit.serviceName}_provider_check`, new Buffer(message));
-};
-
 
 const port = process.argv[2];
 const portWs = process.argv[3];
 
-var proxy = httpProxy.createProxyServer({ target: provider.http})
+httpProxy.createProxyServer({target: provider.http})
   .listen(port);
-proxy.on('proxyReq', async function () {
-  await sendMessage(port);
-});
 
 
-var proxyWs = httpProxy.createProxyServer({ target: provider.ws, ws: true })
+httpProxy.createProxyServer({target: provider.ws, ws: true})
   .listen(portWs);
-proxyWs.on('proxyRes', async function () {
-  await sendMessage(portWs);
-});

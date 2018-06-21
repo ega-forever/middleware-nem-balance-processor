@@ -1,61 +1,54 @@
-/* 
-* Copyright 2017–2018, LaborX PTY
-* Licensed under the AGPL Version 3 license.
-* @author Kirill Sergeev <cloudkserg11@gmail.com>
-*/
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Kirill Sergeev <cloudkserg11@gmail.com>
+ */
 require('dotenv/config');
 
 const config = require('../config'),
   mongoose = require('mongoose'),
   _ = require('lodash'),
-  Promise = require('bluebird');
+  Promise = require('bluebird'),
+  expect = require('chai').expect,
+  providerService = require('../services/providerService'),
+  accountModel = require('../models/accountModel'),
+  amqp = require('amqplib'),
+  ctx = {};
 
 mongoose.Promise = Promise;
 mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 
-const expect = require('chai').expect,
-  Provider = require('../models/provider'),
-  nis = require('../services/nisRequestService')({
-    getProvider: () => {
-      return new Provider(2, config.node.providers[2].ws, config.node.providers[2].http, 0); 
-    }
-  }),
-  accountModel = require('../models/accountModel'),
-  amqp = require('amqplib'),
-  ctx = {};
-
 let amqpInstance;
 
 describe('core/balance processor', function () {
+
   before(async () => {
     await accountModel.remove();
+    amqpInstance = await amqp.connect(config.rabbit.url);
+    let channel = await amqpInstance.createChannel();
+    await providerService.setRabbitmqChannel(channel);
   });
 
   after(async () => {
-    return await mongoose.disconnect(); 
-  });
+    const provider = await providerService.get();
+    provider.wsProvider.disconnect();
 
-  beforeEach(async () => {
-    amqpInstance = await amqp.connect(config.rabbit.url);
-  });
-
-  afterEach(async () => {
+    await mongoose.disconnect();
     await amqpInstance.close();
   });
 
 
-
-
   it('find first block with transactions', async () => {
 
+    const provider = await providerService.get();
     let findBlock = async (height) => {
-      let block = await nis.getBlock(height);
+      let block = await provider.getBlockByNumber(height);
       if (block.transactions.length === 0)
         return await findBlock(height + 1);
 
       let data = await Promise.map(block.transactions, async tx => {
-        let account = await nis.getAccount(tx.recipient);
+        let account = await provider.getAccount(tx.recipient);
         return {tx, account};
       });
 
@@ -88,9 +81,9 @@ describe('core/balance processor', function () {
     expect(account.balance.unconfirmed.toNumber()).to.be.equal(0);
     expect(account.balance.vested.toNumber()).to.be.equal(0);
 
-    const channel = await amqpInstance.createChannel(); 
+    const channel = await amqpInstance.createChannel();
     await channel.assertExchange('internal', 'topic', {durable: false});
-    await channel.publish('internal', `${config.rabbit.serviceName}_user.created`, 
+    await channel.publish('internal', `${config.rabbit.serviceName}_user.created`,
       new Buffer(JSON.stringify({
         address: ctx.tx.recipient
       }))
@@ -101,9 +94,8 @@ describe('core/balance processor', function () {
     expect(account.balance.confirmed.toNumber()).to.be.not.equal(0);
     expect(account.balance.unconfirmed.toNumber()).to.be.not.equal(0);
     expect(account.balance.vested.toNumber()).to.be.not.equal(0);
-    
-  });
 
+  });
 
 
   it('validate notification via amqp about new tx', async () => {
@@ -135,5 +127,6 @@ describe('core/balance processor', function () {
     expect(account).to.have.property('balance');
     expect(account.balance.confirmed.toNumber()).to.be.above(0);
   });
+
 
 });
