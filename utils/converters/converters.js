@@ -10,6 +10,7 @@
  */
 
 const _ = require('lodash'),
+  providerService = require('../../services/providerService'),
   Promise = require('bluebird');
 
 const flattenMosaics = mosObj =>
@@ -43,7 +44,10 @@ const convertBalanceWithDivisibility = (balance) => {
   };
 };
 
-const convertMosaicsWithDivisibility = async (mosaics, nis) => {
+const convertMosaicsWithDivisibility = async (mosaics) => {
+
+  const provider = await providerService.get();
+
   mosaics = _.chain(mosaics)
     .toPairs()
     .map(pair => {
@@ -58,7 +62,7 @@ const convertMosaicsWithDivisibility = async (mosaics, nis) => {
 
   mosaics = await Promise.map(mosaics, async mosaic => {
 
-    let definition = await nis.getMosaicsDefinition(mosaic.namespaceId);
+    let definition = await provider.getMosaicsDefinition(mosaic.namespaceId);
 
     mosaic.valueConfirmed = mosaic.quantity.confirmed / _.chain(definition)
       .get('data')

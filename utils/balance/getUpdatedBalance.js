@@ -12,15 +12,15 @@
 
 const _ = require('lodash'),
   nem = require('nem-sdk').default,
-  utils = require('../utils'),
-  accountModel = require('../models/accountModel');
+  config = require('../../config'),
+  providerService = require('../../services/providerService'),
+  converters = require('../converters/converters');
 
-
-const getUnconfirmedBalance = async (addr, unconfirmedTxs, network) => {
+const getUnconfirmedBalance = async (addr, unconfirmedTxs) => {
   return _.chain(unconfirmedTxs.data)
     .transform((result, item) => {
 
-      const sender = nem.model.address.toAddress(item.transaction.signer, network);
+      const sender = nem.model.address.toAddress(item.transaction.signer, config.node.network);
 
       if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics'))
         result.val += item.transaction.amount;
@@ -37,17 +37,17 @@ const getUnconfirmedBalance = async (addr, unconfirmedTxs, network) => {
     .value();
 };
 
-const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, network, tx) => {
+const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => {
   const  accMosaics = _.get(nisMosaics, 'data', {}),
-    allKeys = utils.intersectByMosaic(_.get(tx, 'mosaics', {}), accMosaics),
-    mosaicsConfirmed = utils.flattenMosaics(accMosaics);
+    allKeys = converters.intersectByMosaic(_.get(tx, 'mosaics', {}), accMosaics),
+    mosaicsConfirmed = converters.flattenMosaics(accMosaics);
   
 
   let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
     .filter(item => _.has(item, 'transaction.mosaics'))
     .transform((result, item) => {
 
-      if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, network)) //self transfer
+      if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.node.network)) //self transfer
         return;
 
       if (addr === item.transaction.recipient)
@@ -57,7 +57,7 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, network
             mosaic.quantity;
         });
 
-      if (addr === nem.model.address.toAddress(item.transaction.signer, network))
+      if (addr === nem.model.address.toAddress(item.transaction.signer, config.node.network))
         item.transaction.mosaics.forEach(mosaic => {
           result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = 
           (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - 
@@ -88,11 +88,14 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, network
 
 
 
-module.exports = async (nis, address, initMosaics = {}, network, tx) => {
-  const accObj = await nis.getAccount(address),
+module.exports = async (address, initMosaics = {}, network, tx) => {
+
+  const provider = await providerService.get();
+
+  const accObj = await provider.getAccount(address),
     balance = _.get(accObj, 'account.balance'),
     vestedBalance = _.get(accObj, 'account.vestedBalance'),
-    unconfirmedTxs = await nis.getUnconfirmedTransactions(address);
+    unconfirmedTxs = await provider.getUnconfirmedTransactions(address);
 
   const accUpdateObj = _.isNumber(balance) ? {
     balance: {
@@ -102,15 +105,11 @@ module.exports = async (nis, address, initMosaics = {}, network, tx) => {
     }
   } : {};
 
-  const nisMosaics = await nis.getMosaicsForAccount(address);
-  accUpdateObj['mosaics'] = await getMosaics(
+  const nisMosaics = await provider.getMosaicsForAccount(address);
+  accUpdateObj.mosaics = await getMosaics(
     nisMosaics, address, initMosaics, unconfirmedTxs, network, tx
   );
 
 
-  return await accountModel.findOneAndUpdate(
-    {address}, 
-    {$set: accUpdateObj}, 
-    {new: true}
-  );
+  return accUpdateObj;
 };
