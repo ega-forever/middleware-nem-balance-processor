@@ -6,11 +6,14 @@
 require('dotenv').config();
 const config = require('../../config');
 
+const providerURI = (process.env.PROXY_PROVIDER || 'http://192.3.61.243:7890@http://192.3.61.243:7778').split('@');
+
+
 config.dev = {
   accounts: [process.env.ADDRESS_ONE ,process.env.ADDRESS_TWO],
   targeProxy: {
-    http: 'http://192.3.61.243:7890', //todo
-    ws: 'http://192.3.61.243:7778'
+    http: providerURI[0],
+    ws: providerURI[1]
   }
 };
 

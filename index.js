@@ -51,7 +51,7 @@ const init = async () => {
   await channel.bindQueue(`${config.rabbit.serviceName}.balance_processor`, 'events', `${TX_QUEUE}.*`);
   await channel.bindQueue(`${config.rabbit.serviceName}.balance_processor`, 'internal', `${config.rabbit.serviceName}_user.created`);
 
-  await providerService.setRabbitmqChannel(channel);
+  await providerService.setRabbitmqChannel(channel, config.rabbit.serviceName);
 
 
   channel.prefetch(2);

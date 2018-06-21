@@ -27,7 +27,7 @@ describe('core/balance processor', function () {
     await accountModel.remove();
     amqpInstance = await amqp.connect(config.rabbit.url);
     let channel = await amqpInstance.createChannel();
-    await providerService.setRabbitmqChannel(channel);
+    await providerService.setRabbitmqChannel(channel, config.rabbit.serviceName);
   });
 
   after(async () => {

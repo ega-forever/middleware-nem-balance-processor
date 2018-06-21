@@ -19,7 +19,7 @@ describe('core/block processor -  change provider', function () {
   before(async () => {
     amqpInstance = await amqp.connect(config.rabbit.url);
     let channel = await amqpInstance.createChannel();
-    await providerService.setRabbitmqChannel(channel);
+    await providerService.setRabbitmqChannel(channel, config.rabbit.serviceName);
   });
 
   after(async () => {
