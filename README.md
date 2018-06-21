@@ -21,32 +21,52 @@ for changed accounts. After middleware send message throught rabbitmq with the f
 { 
  address: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
  balance: {
-    "unconfirmed" : 110818180900,
-    "vested" : 110241162911,
-    "confirmed" : 110818180900
- },
- mosaics: {
-    "prx:xpx" : {
-        "unconfirmed" : 9997989670.0,
-        "confirmed" : 9997989670.0
-    },
+     vested: '1028000004446500',
+     confirmed: '1028000004216500',
+     unconfirmed: '1028000004216600'
+ }
+ assets: { 
     "nem:xem" : {
-        "unconfirmed" : 110818180900.0,
-        "confirmed" : 110818180900.0
+        "unconfirmed" : 6099957,
+        "confirmed" : 6099957
     }
 },
- tx:
-  { timeStamp: 389582,
-    amount: 10000000000000,
-    signature: '72da7b981c9dac6845169fb6f81e410b352c83eefc030ecd903b5b24bd84d0b2c04f991914a9e83784d5ba8883143c770ee317cacec116de104b67b1c0837c08',
-    fee: 154000000,
-    recipient: 'TCUPVQC77TAMH7QKPFP5OT3TLUV4JYRPV6CEGJXW',
-    type: 257,
-    deadline: 393182,
-    message: {},
-    version: -1744830463,
-    signer: 'f60ab8a28a42637062e6ed43a20793735c58cb3e8f3a0ab74148d591a82eba4d' } 
+ tx: {
+    blockNumber: 1494527,
+    timeStamp: 100607022,
+    amount: 1,
+    hash: '7cca311d117c9e67c658513ac032219945115af437928552f99ed03d5d3accae',
+    recipient: 'TAHZD4PLMR4OX3OLNMJCC726PNLXCJMCFWR2JI3D',
+    fee: 100000,
+    messagePayload: '48656c6c6f',
+    messageType: 1,
+    mosaics: null,
+    sender: 'TAX7OUHMQSTDXOMYJIKHFILRKOLVYGECG47FPKGQ',
+    address: 'TAHZD4PLMR4OX3OLNMJCC726PNLXCJMCFWR2JI3D' 
  }
+}
+```
+
+### Update user balance, when created
+
+When user is created new in database, while not get transaction with this account,
+him balance not updated.
+That fixed this problem, need to send message to rabbit mq after created user
+in database
+
+exchange name
+```
+internal
+```
+
+queue name
+```
+<config_rabbit_service_name>_user.created
+```
+
+message structure, where address is user address, that created in db
+```
+{address: <String>}
 ```
 
 

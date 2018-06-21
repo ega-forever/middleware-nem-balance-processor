@@ -10,8 +10,8 @@
  */
 
 const _ = require('lodash'),
-  Promise = require('bluebird'),
-  nis = require('../services/nisRequestService');
+  providerService = require('../../services/providerService'),
+  Promise = require('bluebird');
 
 const flattenMosaics = mosObj =>
   _.transform(mosObj, (acc, m) => {
@@ -45,6 +45,9 @@ const convertBalanceWithDivisibility = (balance) => {
 };
 
 const convertMosaicsWithDivisibility = async (mosaics) => {
+
+  const provider = await providerService.get();
+
   mosaics = _.chain(mosaics)
     .toPairs()
     .map(pair => {
@@ -59,25 +62,25 @@ const convertMosaicsWithDivisibility = async (mosaics) => {
 
   mosaics = await Promise.map(mosaics, async mosaic => {
 
-    let definition = await nis.getMosaicsDefinition(mosaic.namespaceId);
+    let definition = await provider.getMosaicsDefinition(mosaic.namespaceId);
 
     mosaic.valueConfirmed = mosaic.quantity.confirmed / _.chain(definition)
-        .get('data')
-        .find({mosaic: {id: {name: mosaic.name}}})
-        .get('mosaic.properties')
-        .find({name: 'divisibility'})
-        .get('value', 1)
-        .thru(val => Math.pow(10, val))
-        .value();
+      .get('data')
+      .find({mosaic: {id: {name: mosaic.name}}})
+      .get('mosaic.properties')
+      .find({name: 'divisibility'})
+      .get('value', 1)
+      .thru(val => Math.pow(10, val))
+      .value();
 
     mosaic.valueUnconfirmed = mosaic.quantity.unconfirmed / _.chain(definition)
-        .get('data')
-        .find({mosaic: {id: {name: mosaic.name}}})
-        .get('mosaic.properties')
-        .find({name: 'divisibility'})
-        .get('value', 1)
-        .thru(val => Math.pow(10, val))
-        .value();
+      .get('data')
+      .find({mosaic: {id: {name: mosaic.name}}})
+      .get('mosaic.properties')
+      .find({name: 'divisibility'})
+      .get('value', 1)
+      .thru(val => Math.pow(10, val))
+      .value();
 
     return mosaic;
   });
