@@ -4,7 +4,7 @@
  * in received transactions from blockParser via amqp
  *
  * @module Chronobank/nem-balance-processor
- * 
+ *
  * Copyright 2017–2018, LaborX PTY
  * Licensed under the AGPL Version 3 license.
  * @author Kirill Sergeev <cloudkserg11@gmail.com>
@@ -16,17 +16,17 @@ const _ = require('lodash'),
   providerService = require('../../services/providerService'),
   converters = require('../converters/converters');
 
-const getUnconfirmedBalance = async (addr, unconfirmedTxs) => {
+const getUnconfirmedBalance = (addr, unconfirmedTxs) => {
   return _.chain(unconfirmedTxs.data)
     .transform((result, item) => {
 
       const sender = nem.model.address.toAddress(item.transaction.signer, config.node.network);
 
-      if (addr === item.transaction.recipient && !_.has(item, 'transaction.mosaics'))
-        result.val += item.transaction.amount;
+      if (addr === item.transaction.recipient)
+        result.val += item.transaction.amount || 0;
 
-      if (addr === sender && !_.has(item, 'transaction.mosaics'))
-        result.val -= item.transaction.amount;
+      if (addr === sender)
+        result.val -= item.transaction.amount || 0;
 
       if (addr === sender)
         result.val -= item.transaction.fee;
@@ -38,10 +38,10 @@ const getUnconfirmedBalance = async (addr, unconfirmedTxs) => {
 };
 
 const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => {
-  const  accMosaics = _.get(nisMosaics, 'data', {}),
+  const accMosaics = _.get(nisMosaics, 'data', {}),
     allKeys = converters.intersectByMosaic(_.get(tx, 'mosaics', {}), accMosaics),
     mosaicsConfirmed = converters.flattenMosaics(accMosaics);
-  
+
 
   let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
     .filter(item => _.has(item, 'transaction.mosaics'))
@@ -52,16 +52,16 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => 
 
       if (addr === item.transaction.recipient)
         item.transaction.mosaics.forEach(mosaic => {
-          result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = 
-            (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) + 
+          result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] =
+            (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) +
             mosaic.quantity;
         });
 
       if (addr === nem.model.address.toAddress(item.transaction.signer, config.node.network))
         item.transaction.mosaics.forEach(mosaic => {
-          result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] = 
-          (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) - 
-          mosaic.quantity;
+          result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] =
+            (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) -
+            mosaic.quantity;
         });
 
       return result;
@@ -74,18 +74,18 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => 
     .value();
 
 
-  return _.merge({mosaics: initMosaics || {}}, {
-    mosaics: _.chain(allKeys)
-      .transform((result, key) => {
-        result[key] = {
-          confirmed: mosaicsConfirmed[key] || 0,
-          unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
-        };
-      }, {})
-      .value()
-  });
+  return _.chain({mosaics: initMosaics || {}})
+    .merge({
+      mosaics: _.chain(allKeys)
+        .transform((result, key) => {
+          result[key] = {
+            confirmed: mosaicsConfirmed[key] || 0,
+            unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
+          };
+        }, {})
+        .value()
+    }).get('mosaics').value();
 };
-
 
 
 module.exports = async (address, initMosaics = {}, network, tx) => {
@@ -101,13 +101,13 @@ module.exports = async (address, initMosaics = {}, network, tx) => {
     balance: {
       confirmed: balance,
       vested: vestedBalance,
-      unconfirmed: balance + getUnconfirmedBalance(address, unconfirmedTxs, network)
+      unconfirmed: balance + getUnconfirmedBalance(address, unconfirmedTxs)
     }
   } : {};
 
   const nisMosaics = await provider.getMosaicsForAccount(address);
   accUpdateObj.mosaics = await getMosaics(
-    nisMosaics, address, initMosaics, unconfirmedTxs, network, tx
+    nisMosaics, address, initMosaics, unconfirmedTxs, tx
   );
 
 

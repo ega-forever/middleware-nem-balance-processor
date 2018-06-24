@@ -7,8 +7,7 @@
 const config = require('../config'),
   Api = require('../utils/api/Api'),
   providerServiceInterface = require('middleware-common-components/interfaces/blockProcessor/providerServiceInterface'),
-  AbstractProvider = require('middleware-common-components/abstract/universal/AbstractProvider'),
-  Promise = require('bluebird');
+  AbstractProvider = require('middleware-common-components/abstract/universal/AbstractProvider');
 
 /**
  * @service
@@ -18,7 +17,7 @@ const config = require('../config'),
 
 class ProviderService extends AbstractProvider {
 
-  constructor() {
+  constructor () {
     super();
   }
 
@@ -27,7 +26,7 @@ class ProviderService extends AbstractProvider {
    * @description reset the current connection
    * @return {Promise<void>}
    */
-  async resetConnector() {
+  async resetConnector () {
     this.connector = null;
     this.switchConnector();
     this.events.emit('disconnected');
@@ -40,7 +39,7 @@ class ProviderService extends AbstractProvider {
    * @return {Promise<void>}
    * @private
    */
-  _startListenProviderUpdates() {
+  _startListenProviderUpdates () {
 
     this.rabbitmqChannel.consume(`${config.rabbit.serviceName}_provider.${this.id}`, async (message) => {
       message = JSON.parse(message.content.toString());
