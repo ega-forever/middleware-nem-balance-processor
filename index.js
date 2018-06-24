@@ -78,6 +78,7 @@ const init = async () => {
       if (updatedBalance.mosaics)
         account.mosaics = updatedBalance.mosaics;
 
+      account.markModified('mosaics');
       account.save();
 
       let convertedBalance = converters.convertBalanceWithDivisibility(updatedBalance.balance);

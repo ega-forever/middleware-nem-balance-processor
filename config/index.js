@@ -36,7 +36,6 @@ const config = {
   },
   node: {
     network: parseInt(process.env.NETWORK) || -104,
-    networkName: process.env.NETWORK_NAME || 'testnet',
     providers: createConfigProviders(process.env.PROVIDERS || getDefault())
   },
   rabbit: {
