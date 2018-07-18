@@ -66,11 +66,7 @@ const init = async () => {
       if (!account)
         return channel.ack(data);
 
-      const updatedBalance = await getUpdatedBalance(
-        account.address,
-        _.get(account, 'mosaics', {}),
-        parsedData.hash ? data : null
-      );
+      const updatedBalance = await getUpdatedBalance(account.address, _.get(account, 'mosaics', {}), parsedData.hash ? data : null);
 
       if (updatedBalance.balance)
         account.balance = updatedBalance.balance;
@@ -82,7 +78,7 @@ const init = async () => {
       account.save();
 
       let convertedBalance = converters.convertBalanceWithDivisibility(updatedBalance.balance);
-      let convertedMosaics = await converters.convertMosaicsWithDivisibility(updatedBalance.mosaics);
+      let convertedMosaics = converters.convertMosaicsWithDivisibility(updatedBalance.mosaics);
 
       let message = {
         address: addr,
