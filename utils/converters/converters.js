@@ -3,24 +3,13 @@
  *
  * @module Chronobank/utils
  *
- * 
+ *
  * Copyright 2017–2018, LaborX PTY
  * Licensed under the AGPL Version 3 license.
  * @author Kirill Sergeev <cloudkserg11@gmail.com>
  */
 
-const _ = require('lodash'),
-  providerService = require('../../services/providerService'),
-  Promise = require('bluebird');
-
-const flattenMosaics = mosObj =>
-  _.transform(mosObj, (acc, m) => {
-    if (m.mosaicId && m.mosaicId.namespaceId)
-      acc[`${m.mosaicId.namespaceId}:${m.mosaicId.name}`] = m.quantity;
-  }, {});
-
-const intersectByMosaic = (m1, m2) =>
-  _.uniq([..._.keys(flattenMosaics(m1)), ..._.keys(flattenMosaics(m2))]);
+const _ = require('lodash');
 
 const convertBalanceWithDivisibility = (balance) => {
 
@@ -44,64 +33,34 @@ const convertBalanceWithDivisibility = (balance) => {
   };
 };
 
-const convertMosaicsWithDivisibility = async (mosaics) => {
+const convertMosaicsWithDivisibility = mosaics => {
 
-  const provider = await providerService.get();
-
-  mosaics = _.chain(mosaics)
+  return _.chain(mosaics)
     .toPairs()
     .map(pair => {
-      let definition = pair[0].split(':');
-      return {
-        name: definition[1],
-        namespaceId: definition[0],
-        quantity: pair[1]
+      let name = pair[0];
+      let data = pair[1];
+
+      data = {
+        confirmed: {
+          amount: data.confirmed / Math.pow(10, data.decimals),
+          value: data.confirmed
+        },
+        unconfirmed: {
+          amount: data.unconfirmed / Math.pow(10, data.decimals),
+          value: data.unconfirmed
+        },
+        decimals: data.decimals
       };
+
+      return [name, data];
     })
+    .fromPairs()
     .value();
 
-  mosaics = await Promise.map(mosaics, async mosaic => {
-
-    let definition = await provider.getMosaicsDefinition(mosaic.namespaceId);
-
-    mosaic.valueConfirmed = mosaic.quantity.confirmed / _.chain(definition)
-      .get('data')
-      .find({mosaic: {id: {name: mosaic.name}}})
-      .get('mosaic.properties')
-      .find({name: 'divisibility'})
-      .get('value', 1)
-      .thru(val => Math.pow(10, val))
-      .value();
-
-    mosaic.valueUnconfirmed = mosaic.quantity.unconfirmed / _.chain(definition)
-      .get('data')
-      .find({mosaic: {id: {name: mosaic.name}}})
-      .get('mosaic.properties')
-      .find({name: 'divisibility'})
-      .get('value', 1)
-      .thru(val => Math.pow(10, val))
-      .value();
-
-    return mosaic;
-  });
-
-  return _.transform(mosaics, (acc, item) => {
-    acc[`${item.namespaceId}:${item.name}`] = {
-      confirmed: {
-        amount: item.valueConfirmed,
-        value: item.quantity.confirmed
-      },
-      unconfirmed: {
-        amount: item.valueUnconfirmed,
-        value: item.quantity.unconfirmed
-      }
-    };
-  }, {});
 };
 
 module.exports = {
-  flattenMosaics,
-  intersectByMosaic,
   convertBalanceWithDivisibility,
   convertMosaicsWithDivisibility
 };

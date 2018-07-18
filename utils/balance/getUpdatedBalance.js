@@ -14,7 +14,7 @@ const _ = require('lodash'),
   nem = require('nem-sdk').default,
   config = require('../../config'),
   providerService = require('../../services/providerService'),
-  converters = require('../converters/converters');
+  mosaicsUtil = require('../mosaics/mosaics');
 
 const getUnconfirmedBalance = (addr, unconfirmedTxs) => {
   return _.chain(unconfirmedTxs.data)
@@ -37,10 +37,14 @@ const getUnconfirmedBalance = (addr, unconfirmedTxs) => {
     .value();
 };
 
-const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => {
+const getMosaics = async (address, initMosaics, unconfirmedTxs, tx) => {
+
+  const provider = await providerService.get();
+  const nisMosaics = await provider.getMosaicsForAccount(address);
+
   const accMosaics = _.get(nisMosaics, 'data', {}),
-    allKeys = converters.intersectByMosaic(_.get(tx, 'mosaics', {}), accMosaics),
-    mosaicsConfirmed = converters.flattenMosaics(accMosaics);
+    allKeys = mosaicsUtil.intersectByMosaic(_.get(tx, 'mosaics', {}), accMosaics),
+    mosaicsConfirmed = mosaicsUtil.flattenMosaics(accMosaics);
 
 
   let mosaicsUnconfirmed = _.chain(unconfirmedTxs.data)
@@ -50,14 +54,14 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => 
       if (item.transaction.recipient === nem.model.address.toAddress(item.transaction.signer, config.node.network)) //self transfer
         return;
 
-      if (addr === item.transaction.recipient)
+      if (address === item.transaction.recipient)
         item.transaction.mosaics.forEach(mosaic => {
           result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] =
             (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) +
             mosaic.quantity;
         });
 
-      if (addr === nem.model.address.toAddress(item.transaction.signer, config.node.network))
+      if (address === nem.model.address.toAddress(item.transaction.signer, config.node.network))
         item.transaction.mosaics.forEach(mosaic => {
           result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] =
             (result[`${mosaic.mosaicId.namespaceId}:${mosaic.mosaicId.name}`] || 0) -
@@ -66,7 +70,7 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => 
 
       return result;
     }, {})
-    .pick(allKeys)
+    //.pick(allKeys)
     .toPairs()
     .transform((result, pair) => {
       result[pair[0]] = (mosaicsConfirmed[pair[0]] || 0) + pair[1];
@@ -74,21 +78,38 @@ const getMosaics = async (nisMosaics, addr, initMosaics, unconfirmedTxs, tx) => 
     .value();
 
 
-  return _.chain({mosaics: initMosaics || {}})
-    .merge({
-      mosaics: _.chain(allKeys)
-        .transform((result, key) => {
-          result[key] = {
-            confirmed: mosaicsConfirmed[key] || 0,
-            unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
-          };
-        }, {})
-        .value()
-    }).get('mosaics').value();
+  let mosaics = _.merge(initMosaics || {},
+    _.transform(allKeys, (result, key) => {
+      result[key] = {
+        confirmed: mosaicsConfirmed[key] || 0,
+        unconfirmed: mosaicsUnconfirmed[key] || mosaicsConfirmed[key] || 0
+      };
+    }, {})
+  );
+
+  mosaics = _.toPairs(mosaics);
+
+  for (let item of mosaics) {
+
+    let definition = item[0];
+    let mosaic = item[1];
+
+    if (mosaic.decimals)
+      continue;
+
+    if (definition === 'nem:xem') {
+      mosaic.decimals = 6;
+      continue;
+    }
+
+    mosaic.decimals = await mosaicsUtil.getMosaicDivisibility(_.fromPairs([item]));
+  }
+
+  return _.fromPairs(mosaics);
 };
 
 
-module.exports = async (address, initMosaics = {}, network, tx) => {
+module.exports = async (address, initMosaics = {}, tx) => {
 
   const provider = await providerService.get();
 
@@ -105,10 +126,7 @@ module.exports = async (address, initMosaics = {}, network, tx) => {
     }
   } : {};
 
-  const nisMosaics = await provider.getMosaicsForAccount(address);
-  accUpdateObj.mosaics = await getMosaics(
-    nisMosaics, address, initMosaics, unconfirmedTxs, tx
-  );
+  accUpdateObj.mosaics = await getMosaics(address, initMosaics, unconfirmedTxs, tx);
 
 
   return accUpdateObj;
