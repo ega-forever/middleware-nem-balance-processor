@@ -21,7 +21,7 @@ const _ = require('lodash'),
   converters = require('./utils/converters/converters'),
   accountModel = require('./models/accountModel'),
   providerService = require('./services/providerService'),
-  log = bunyan.createLogger({name: 'nem-balance-processor'});
+  log = bunyan.createLogger({name: 'core.balanceProcessor', level: config.logs.level});
 
 const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
 
