@@ -16,10 +16,15 @@ const _ = require('lodash'),
   mongoose = require('mongoose'),
   bunyan = require('bunyan'),
   amqp = require('amqplib'),
+  
+  AmqpService = require('middleware-common-infrastructure/AmqpService'),
+  InfrastructureInfo = require('middleware-common-infrastructure/InfrastructureInfo'),
+  InfrastructureService = require('middleware-common-infrastructure/InfrastructureService'),
+  
   config = require('./config'),
   getUpdatedBalance = require('./utils/balance/getUpdatedBalance'),
   converters = require('./utils/converters/converters'),
-  accountModel = require('./models/accountModel'),
+  models = require('./models'),
   providerService = require('./services/providerService'),
   log = bunyan.createLogger({name: 'core.balanceProcessor', level: config.logs.level});
 
@@ -28,12 +33,35 @@ const TX_QUEUE = `${config.rabbit.serviceName}_transaction`;
 mongoose.Promise = Promise;
 mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
+
+const runInfrastucture = async function () {
+  const rabbit = new AmqpService(
+    config.infrastructureRabbit.url, 
+    config.infrastructureRabbit.exchange,
+    config.infrastructureRabbit.serviceName
+  );
+  const info = InfrastructureInfo(require('./package.json'));
+  const infrastructure = new InfrastructureService(info, rabbit, {checkInterval: 10000});
+  await infrastructure.start();
+  infrastructure.on(infrastructure.REQUIREMENT_ERROR, ({requirement, version}) => {
+    log.error(`Not found requirement with name ${requirement.name} version=${requirement.version}.` +
+        ` Last version of this middleware=${version}`);
+    process.exit(1);
+  });
+  await infrastructure.checkRequirements();
+  infrastructure.periodicallyCheck();
+};
+
+
 const init = async () => {
 
 
   mongoose.connection.on('disconnected', () => {
     throw new Error('mongo disconnected!');
   });
+
+  models.init();
+
 
   let conn = await amqp.connect(config.rabbit.url);
 
@@ -42,6 +70,9 @@ const init = async () => {
   channel.on('close', () => {
     throw new Error('rabbitmq process has finished!');
   });
+
+  if (config.checkInfrastructure)
+    await runInfrastucture();
 
 
   await channel.assertExchange('events', 'topic', {durable: false});
@@ -53,7 +84,6 @@ const init = async () => {
 
   await providerService.setRabbitmqChannel(channel, config.rabbit.serviceName);
 
-
   channel.prefetch(2);
 
   channel.consume(`${config.rabbit.serviceName}.balance_processor`, async (data) => {
@@ -61,7 +91,7 @@ const init = async () => {
       const parsedData = JSON.parse(data.content.toString());
       const addr = data.fields.routingKey.slice(TX_QUEUE.length + 1) || parsedData.address;
 
-      let account = await accountModel.findOne({address: addr});
+      let account = await models.accountModel.findOne({address: addr});
 
       if (!account)
         return channel.ack(data);
@@ -86,9 +116,8 @@ const init = async () => {
         mosaics: convertedMosaics
       };
 
-      if (data.hash)
+      if (parsedData.hash)
         message.tx = parsedData;
-
       await channel.publish('events', `${config.rabbit.serviceName}_balance.${addr}`, new Buffer(JSON.stringify(message)));
 
     } catch (e) {
