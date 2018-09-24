@@ -34,7 +34,7 @@ mongoose.Promise = Promise;
 mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 
-const runInfrastucture = async function () {
+const runSystem = async function () {
   const rabbit = new AmqpService(
     config.infrastructureRabbit.url, 
     config.infrastructureRabbit.exchange,
@@ -71,8 +71,8 @@ const init = async () => {
     throw new Error('rabbitmq process has finished!');
   });
 
-  if (config.checkInfrastructure)
-    await runInfrastucture();
+  if (config.checkSystem)
+    await runSystem();
 
 
   await channel.assertExchange('events', 'topic', {durable: false});
