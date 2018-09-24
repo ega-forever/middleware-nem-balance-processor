@@ -2,6 +2,7 @@ const EventEmitter = require('events'),
   Promise = require('bluebird'),
   request = require('request-promise'),
   URL = require('url').URL,
+  _ = require('lodash'),
   SockJS = require('sockjs-client'),
   Stomp = require('webstomp-client');
 
@@ -76,8 +77,11 @@ class Api {
     return await this._makeRequest('block/at/public', 'POST', {height: height});
   }
 
-  async getMosaicsForAccount (addr) {
-    return this._makeRequest(`/account/mosaic/owned?address=${addr}`);
+  async getMosaicsForAccount (addr, namespaceId, name) {
+    const balances =  await this._makeRequest(`/account/mosaic/owned?address=${addr}`);
+    if (namespaceId && name) 
+      return _.filter(balances.data, d => d.mosaicId['namespaceId'] === namespaceId && d.mosaicId['name'] === name);
+    return balances;
   }
 
   async getMosaicsDefinition (id) {
@@ -90,6 +94,13 @@ class Api {
 
   async getUnconfirmedTransactions (addr) {
     return this._makeRequest(`/account/unconfirmedTransactions?address=${addr}`);
+  }
+
+  async getTransactions (addr, hash) {
+    let url = `/account/transfers/outgoing?address=${addr}`;
+    if (hash) 
+      url += `&hash=${hash}`;
+    return this._makeRequest(url);
   }
 
 }
