@@ -17,6 +17,7 @@ const config = require('../config'),
   Promise = require('bluebird'),
   mongoose = require('mongoose'),
   amqp = require('amqplib'),
+  spawn = require('child_process').spawn,
   ctx = {};
 
 mongoose.Promise = Promise;
@@ -56,11 +57,16 @@ describe('core/balanceProcessor', function () {
 
     await providerService.setRabbitmqChannel(ctx.amqp.channel, config.rabbit.serviceName);
 
+    ctx.checkerPid = spawn('node', ['tests/utils/proxyChecker.js'], {
+      env: process.env, stdio: 'ignore'
+    });
+    await Promise.delay(3000);
   });
 
   after (async () => {
     mongoose.disconnect();
     await ctx.amqp.instance.close();
+    await ctx.checkerPid.kill();
   });
 
 
