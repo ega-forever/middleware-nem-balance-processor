@@ -17,9 +17,9 @@ const _ = require('lodash'),
   bunyan = require('bunyan'),
   amqp = require('amqplib'),
   
-  AmqpService = require('middleware-common-infrastructure/AmqpService'),
-  InfrastructureInfo = require('middleware-common-infrastructure/InfrastructureInfo'),
-  InfrastructureService = require('middleware-common-infrastructure/InfrastructureService'),
+  AmqpService = require('middleware_common_infrastructure/AmqpService'),
+  InfrastructureInfo = require('middleware_common_infrastructure/InfrastructureInfo'),
+  InfrastructureService = require('middleware_common_infrastructure/InfrastructureService'),
   
   config = require('./config'),
   getUpdatedBalance = require('./utils/balance/getUpdatedBalance'),
@@ -36,24 +36,26 @@ mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 const runSystem = async function () {
   const rabbit = new AmqpService(
-    config.infrastructureRabbit.url, 
-    config.infrastructureRabbit.exchange,
-    config.infrastructureRabbit.serviceName
+    config.systemRabbit.url, 
+    config.systemRabbit.exchange,
+    config.systemRabbit.serviceName
   );
-  const info = InfrastructureInfo(require('./package.json'));
-  const infrastructure = new InfrastructureService(info, rabbit, {checkInterval: 10000});
-  await infrastructure.start();
-  infrastructure.on(infrastructure.REQUIREMENT_ERROR, ({requirement, version}) => {
+  const info = new InfrastructureInfo(require('./package.json'));
+  const system = new InfrastructureService(info, rabbit, {checkInterval: 10000});
+  await system.start();
+  system.on(system.REQUIREMENT_ERROR, (requirement, version) => {
     log.error(`Not found requirement with name ${requirement.name} version=${requirement.version}.` +
         ` Last version of this middleware=${version}`);
     process.exit(1);
   });
-  await infrastructure.checkRequirements();
-  infrastructure.periodicallyCheck();
+  await system.checkRequirements();
+  system.periodicallyCheck();
 };
 
 
 const init = async () => {
+  if (config.checkSystem)
+    await runSystem();
 
 
   mongoose.connection.on('disconnected', () => {
@@ -71,9 +73,6 @@ const init = async () => {
     throw new Error('rabbitmq process has finished!');
   });
 
-  if (config.checkSystem)
-    await runSystem();
-
 
   await channel.assertExchange('events', 'topic', {durable: false});
   await channel.assertExchange('internal', 'topic', {durable: false});
@@ -88,6 +87,8 @@ const init = async () => {
 
   channel.consume(`${config.rabbit.serviceName}.balance_processor`, async (data) => {
     try {
+      if (!data)
+        return false;
       const parsedData = JSON.parse(data.content.toString());
       const addr = data.fields.routingKey.slice(TX_QUEUE.length + 1) || parsedData.address;
 

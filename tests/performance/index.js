@@ -5,6 +5,7 @@
  */
 
 const models = require('../../models'),
+  Api = require('../utils/Api'),
   config = require('../../config'),
   getUpdatedBalance = require('../../utils/balance/getUpdatedBalance'),
   expect = require('chai').expect,
@@ -45,7 +46,7 @@ module.exports = (ctx) => {
 
 
   it('generate transation', async () => {
-    await sender.sendTransaction(ctx.accounts, 100);
+    await sender.sendTransaction(ctx.accounts, 1);
   });
 
 
@@ -65,14 +66,12 @@ module.exports = (ctx) => {
 
   it('validate balance processor notification speed', async () => {
     const address = ctx.accounts[0].address;
-    const instance = await providerService.get();
-    const height = instance.getHeight();
 
     await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_performance.balance`);
     await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_performance.balance`, 'events', `${config.rabbit.serviceName}_balance.${address}`);
 
     const start = Date.now();
-    await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_block`, new Buffer(JSON.stringify({block: height})));
+    await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${address}`, new Buffer(JSON.stringify({address: address})));
 
     await new Promise((res) => {
       ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_performance.balance`, res, {noAck: true});

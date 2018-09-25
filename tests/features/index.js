@@ -66,126 +66,124 @@ module.exports = (ctx) => {
   });
 
 
-  // it('validate balance change on tx arrive', async () => {
-  //   const instance = await providerService.get();
+   it('validate balance change on tx arrive', async () => {
+     const instance = await providerService.get();
 
 
-  //   let tx;
-  //   let balance0;
-  //   let balance1;
-  //   await Promise.all([
-  //     (async () => {
-  //       tx = await waitTransaction(sender.sendTransaction.bind(sender, ctx.accounts, 0.000001));
-  //       balance0 = (await instance.getAccount(ctx.accounts[0].address))['account']['balance'];
-  //       balance1 = (await instance.getAccount(ctx.accounts[1].address))['account']['balance'];
-  //       await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.accounts[0].address}`, new Buffer(JSON.stringify(tx)));
-  //       await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.accounts[1].address}`, new Buffer(JSON.stringify(tx)));
-  //     })(),
-  //     (async () => {
-  //       await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.balance`, {autoDelete: true, durable: false});
-  //       await ctx.amqp.channel.bindQueue(
-  //         `app_${config.rabbit.serviceName}_test_features.balance`, 'events', 
-  //         `${config.rabbit.serviceName}_balance.${ctx.accounts[1].address}`);
-  //       await new Promise(res =>
-  //         ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.balance`, 
-  //           async data => {
+     let tx;
+     let balance0;
+     let balance1;
+     await Promise.all([
+       (async () => {
+         tx = await waitTransaction(sender.sendTransaction.bind(sender, ctx.accounts, 0.000001));
+         balance0 = (await instance.getAccount(ctx.accounts[0].address))['account']['balance'];
+         balance1 = (await instance.getAccount(ctx.accounts[1].address))['account']['balance'];
+         await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.accounts[0].address}`, new Buffer(JSON.stringify(tx)));
+         await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${ctx.accounts[1].address}`, new Buffer(JSON.stringify(tx)));
+       })(),
+       (async () => {
+         await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.balance`, {autoDelete: true, durable: false});
+         await ctx.amqp.channel.bindQueue(
+           `app_${config.rabbit.serviceName}_test_features.balance`, 'events', 
+           `${config.rabbit.serviceName}_balance.${ctx.accounts[1].address}`);
+         await new Promise(res =>
+           ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.balance`, 
+             async data => {
 
-  //             if (!data)
-  //               return;
-  //             const message = JSON.parse(data.content.toString());
-
-
-  //             expect(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx)).to.equal(true);
-  //             expect(message.balance.confirmed.value).to.eq(balance1);
-  //             expect(message.address).to.eq(ctx.accounts[1].address);
-  //             await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
-  //             res();
-  //           }, {noAck: true})
-  //       );
-
-  //     })(),
-  //     (async () => {
-  //       await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features2.balance`, {autoDelete: true, durable: false});
-  //       await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_features2.balance`,
-  //         'events', `${config.rabbit.serviceName}_balance.${ctx.accounts[0].address}`);
-  //       await new Promise(res =>
-  //         ctx.amqp.channel.consume(
-  //           `app_${config.rabbit.serviceName}_test_features2.balance`,
-  //           async data => {
-
-  //             if (!data)
-  //               return;
-
-  //             const message = JSON.parse(data.content.toString());
-
-  //             expect(message.balance.confirmed.value).to.eq(balance0);
-  //             expect(message.address).to.eq(ctx.accounts[0].address);
-  //             expect(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx)).to.equal(true);
-  //             await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features2.balance`);
-  //             res();
-  //           }, {noAck: true})
-  //       );
-
-  //     })()
-  //   ]);
-  // });
+               if (!data)
+                 return;
+               const message = JSON.parse(data.content.toString());
 
 
-  // it('validate balance on user registration', async () => {
+               expect(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx)).to.equal(true);
+               expect(message.balance.confirmed.value).to.eq(balance1);
+               expect(message.address).to.eq(ctx.accounts[1].address);
+               await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
+               res();
+             }, {noAck: true})
+         );
 
-  //   await models.accountModel.update({address: ctx.accounts[0].address}, {
-  //     $set: {
-  //       balance: {}
-  //     }
-  //   });
+       })(),
+       (async () => {
+         await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features2.balance`, {autoDelete: true, durable: false});
+         await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_features2.balance`,
+           'events', `${config.rabbit.serviceName}_balance.${ctx.accounts[0].address}`);
+         await new Promise(res =>
+           ctx.amqp.channel.consume(
+             `app_${config.rabbit.serviceName}_test_features2.balance`,
+             async data => {
 
-  //   const instance = await providerService.get();
-  //   let balance = (await instance.getAccount(ctx.accounts[0].address))['account']['balance'];
+               if (!data)
+                 return;
+
+               const message = JSON.parse(data.content.toString());
+
+               expect(message.balance.confirmed.value).to.eq(balance0);
+               expect(message.address).to.eq(ctx.accounts[0].address);
+               expect(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx)).to.equal(true);
+               await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features2.balance`);
+               res();
+             }, {noAck: true})
+         );
+
+       })()
+     ]);
+   });
 
 
-  //   await Promise.all([
-  //     (async () => {
-  //       await Promise.delay(3000);
-  //       await ctx.amqp.channel.publish('internal', `${config.rabbit.serviceName}_user.created`, new Buffer(JSON.stringify({address: ctx.accounts[0].address})));
-  //     })(),
-  //     (async () => {
-  //       await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
-  //       await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_features.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.accounts[0].address}`);
-  //       await new Promise(res =>
-  //         ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.balance`, async data => {
+   it('validate balance on user registration', async () => {
 
-  //           if (!data)
-  //             return;
+     await models.accountModel.update({address: ctx.accounts[0].address}, {
+       $set: {
+         balance: {}
+       }
+     });
 
-  //           const message = JSON.parse(data.content.toString());
+     const instance = await providerService.get();
+     let balance = (await instance.getAccount(ctx.accounts[0].address))['account']['balance'];
 
-  //           expect(message.balance.confirmed.value).to.eq(balance);
-  //           expect(message.address).to.eq(ctx.accounts[0].address);
-  //           expect(message.tx).to.undefined;
 
-  //           await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
-  //           res();
-  //         }, {noAck: true})
-  //       );
+     await Promise.all([
+       (async () => {
+         await Promise.delay(3000);
+         await ctx.amqp.channel.publish('internal', `${config.rabbit.serviceName}_user.created`, new Buffer(JSON.stringify({address: ctx.accounts[0].address})));
+       })(),
+       (async () => {
+         await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
+         await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_features.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.accounts[0].address}`);
+         await new Promise(res =>
+           ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.balance`, async data => {
 
-  //     })()
-  //   ]);
-  // });
+             if (!data)
+               return;
+
+             const message = JSON.parse(data.content.toString());
+
+             expect(message.balance.confirmed.value).to.eq(balance);
+             expect(message.address).to.eq(ctx.accounts[0].address);
+             expect(message.tx).to.undefined;
+
+             await ctx.amqp.channel.deleteQueue(`app_${config.rabbit.serviceName}_test_features.balance`);
+             res();
+           }, {noAck: true})
+         );
+
+       })()
+     ]);
+   });
 
   it('add new Mosaics', async () => {
 
     const instance = await providerService.get();
-    const mosaicTx = await mosaicSender.sendTransaction(ctx.accounts, 'cb', 'minutes', 0.00000001);
+    const mosaicTx = await mosaicSender.sendTransaction(ctx.accounts, 'cb', 'minutes', 10);
     let balanceAccount11 = await instance.getMosaicsForAccount(ctx.accounts[1].address, 'cb', 'minutes');
     let balanceAccount10 = await instance.getMosaicsForAccount(ctx.accounts[0].address, 'cb', 'minutes');
-    console.log('cb', mosaicTx, balanceAccount10[0].quantity, balanceAccount11);
     return;
 
 
     const tx = await waitTransaction(sendMosaic.bind(sender, 
       ctx.accounts[1].address, 'cb2.test', 'test', 0.00001, ctx.accounts[0].key
     ));
-    console.log(mosaicTx, tx);
 
     let balanceAccount1 = await instance.getMosaicsForAccount(ctx.accounts[1].address, 'chronobank', 'test');
 

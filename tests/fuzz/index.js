@@ -8,6 +8,7 @@ const models = require('../../models'),
   config = require('../../config'),
   _ = require('lodash'),
   providerService = require('../../services/providerService'),
+  Api = require('../utils/Api'),
   expect = require('chai').expect,
   Promise = require('bluebird'),
   spawn = require('child_process').spawn;
@@ -45,12 +46,13 @@ module.exports = (ctx) => {
   it('validate balance processor update balance ability', async () => {
     const address = ctx.accounts[0].address;
 
-    let block = await models.blockModel.find({}).sort({number: -1}).limit(1);
-    block = block[0].number;
+    const transaction = {
+        address
+    };
     await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_fuzz.balance`);
     await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_fuzz.balance`, 'events', `${config.rabbit.serviceName}_balance.${address}`);
 
-    await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_block`, new Buffer(JSON.stringify({block: block})));
+    await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${address}`, new Buffer(JSON.stringify(transaction)));
 
     await new Promise((res) => {
       ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_fuzz.balance`, async data => {
@@ -89,7 +91,8 @@ module.exports = (ctx) => {
     ctx.balanceProcessorPid = spawn('node', ['index.js'], {env: process.env, stdio: 'ignore'});
     await Promise.delay(20000);
 
-    const tx = await instance.getTransactions(address).data[0];
+    const data = await instance.getTransactions(address);
+    const tx = data['data'][0];
     await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${address}`, new Buffer(JSON.stringify(tx)));
     await Promise.delay(5000);
 
