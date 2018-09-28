@@ -47,6 +47,9 @@ const config = {
     exchange: process.env.SYSTEM_RABBIT_EXCHANGE || 'internal',
     serviceName: process.env.SYSTEM_RABBIT_SERVICE_NAME || 'system' 
   },
+  system: {
+    waitTime: process.env.SYSTEM_WAIT_TIME ? parseInt(process.env.SYSTEM_WAIT_TIME) : 10000    
+  },
   checkSystem: process.env.CHECK_SYSTEM ? parseInt(process.env.CHECK_SYSTEM) : true,
   logs: {
     level: process.env.LOG_LEVEL || 'info'

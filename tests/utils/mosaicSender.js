@@ -33,10 +33,8 @@ const sendTransactionTo = async (addressTo, namespaceId, name, amount, privateKe
   // and put it into mosaicDefinitionMetaDataPair model (objects.js) next to nem:xem (be careful to respect object structure)
   const res1 = await nem.com.requests.namespace.mosaicDefinitions(endpoint, 
     mosaicAttachment.mosaicId.namespaceId);
-  console.log('res1', res1);
   // Look for the mosaic definition(s) we want in the request response (Could use ['eur', 'usd'] to return eur and usd mosaicDefinitionMetaDataPairs)
   var neededDefinition = nem.utils.helpers.searchMosaicDefinitionArray(res1.data, [name]);
-  console.log('neededDefinition', neededDefinition);
 
   // Get full name of mosaic to use as object key
   var fullMosaicName  = nem.utils.format.mosaicIdToName(mosaicAttachment.mosaicId);
@@ -106,7 +104,6 @@ const sendTransactionTo = async (addressTo, namespaceId, name, amount, privateKe
     mosaicDefinitionMetaDataPair,
     nem.model.network.data.testnet.id
   );
-  console.log(transactionEntity);
   // Serialize transfer transaction and announce
   return await nem.model.transactions.send(common, transactionEntity, endpoint);
 };

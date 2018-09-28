@@ -36,7 +36,6 @@ module.exports = async (namespaceId, name, privateKeyFrom) => {
     config.node.network
   );
 
-  console.log(transactionEntity);
 
   // Serialize transaction and announce
   return await nem.model.transactions.send(common, transactionEntity, endpoint);
