@@ -10,6 +10,7 @@ services:
   - rabbitmq
 
 before_install:
+  - export PROVIDERS=http://bob.nem.ninja:7890@http://bob.nem.nimja:7778,http://192.3.61.243:7890@http://192.3.61.243:7778
   - mongo data --eval 'db.dropDatabase();'
   - sudo apt-get update
   - sudo apt-get install python2.7 git-all pkg-config libncurses5-dev libssl-dev libnss3-dev libexpat-dev libc6-dev -y
@@ -19,16 +20,8 @@ install:
   - npm install
   - npm install -g pm2
 
-before_script:
-    - export PROVIDERS=http://localhost:8010@http://localhost:8011,http://localhost:8020@http://localhost:8021
-    - export PROXY_PROVIDER=http://192.3.61.243:7890@http://192.3.61.243:7778
-    - node $TRAVIS_BUILD_DIR/tests/proxy/server.js  8010 8011 --name 'proxy1' &
-    - node $TRAVIS_BUILD_DIR/tests/proxy/server.js  8020 8021 --name 'proxy2' &
-    - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware-nem-blockprocessor && pm2 start index.js
-    - cd $TRAVIS_BUILD_DIR && pm2 start index.js
-
 script:
-  - sleep 120 && npm test -- --coverage
+  - npm test -- --coverage
 
 after_script:
   - pm2 logs --nostream
