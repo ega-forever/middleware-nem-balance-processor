@@ -59,15 +59,15 @@ describe('core/balanceProcessor', function () {
 
   after (async () => {
     mongoose.disconnect();
-    providerService.wsProvider.disconnect();
+    providerService.connector.wsProvider.disconnect();
     await ctx.amqp.instance.close();
     await ctx.checkerPid.kill();
   });
 
 
-  // describe('block', () => blockTests(ctx));
+   describe('block', () => blockTests(ctx));
 
- // describe('performance', () => performanceTests(ctx));
+  describe('performance', () => performanceTests(ctx));
 
   describe('fuzz', () => fuzzTests(ctx));
 
