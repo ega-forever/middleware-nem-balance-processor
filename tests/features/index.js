@@ -22,7 +22,7 @@ module.exports = (ctx) => {
     await models.accountModel.remove({});
 
     await ctx.amqp.channel.deleteQueue(`${config.rabbit.serviceName}.balance_processor`);
-    ctx.balanceProcessorPid = spawn('node', ['index.js'], {env: process.env, stdio: 'ignore'});
+    ctx.balanceProcessorPid = spawn('node', ['index.js'], {env: _.merge({PROVIDERS: ctx.providers.join(',')}, process.env), stdio: 'ignore'});
     await Promise.delay(10000);
 
     await models.accountModel.create({
