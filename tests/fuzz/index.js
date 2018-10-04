@@ -8,7 +8,6 @@ const models = require('../../models'),
   config = require('../../config'),
   _ = require('lodash'),
   providerService = require('../../services/providerService'),
-  Api = require('../utils/Api'),
   expect = require('chai').expect,
   Promise = require('bluebird'),
   spawn = require('child_process').spawn;

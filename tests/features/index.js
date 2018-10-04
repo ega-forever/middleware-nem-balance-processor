@@ -12,7 +12,6 @@ const models = require('../../models'),
   providerService = require('../../services/providerService'),
   waitTransaction = require('../utils/waitTransaction'),
   sender = require('../utils/sender'),
-  mosaicSender = require('../utils/mosaicSender'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
   Promise = require('bluebird');
@@ -84,8 +83,7 @@ module.exports = (ctx) => {
        (async () => {
          await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.balance`, {autoDelete: true, durable: false});
          await ctx.amqp.channel.bindQueue(
-           `app_${config.rabbit.serviceName}_test_features.balance`, 'events', 
-           `${config.rabbit.serviceName}_balance.${ctx.accounts[1].address}`);
+           `app_${config.rabbit.serviceName}_test_features.balance`, 'events', `${config.rabbit.serviceName}_balance.${ctx.accounts[1].address}`);
          await new Promise(res =>
            ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.balance`, 
              async data => {
@@ -94,6 +92,9 @@ module.exports = (ctx) => {
                  return;
                const message = JSON.parse(data.content.toString());
 
+               console.log(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx));
+               console.log(message.balance);
+               console.log(balance1);
 
                expect(_.isEqual(JSON.parse(JSON.stringify(tx)), message.tx)).to.equal(true);
                expect(message.balance.confirmed.value).to.eq(balance1);
@@ -172,6 +173,7 @@ module.exports = (ctx) => {
      ]);
    });
 
+/*
   it('add new Mosaics', async () => {
 
     const instance = await providerService.get();
@@ -217,6 +219,7 @@ module.exports = (ctx) => {
       })()
     ]);
   });
+*/
 
   after (() => {
     ctx.balanceProcessorPid.kill();

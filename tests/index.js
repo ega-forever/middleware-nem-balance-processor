@@ -40,18 +40,12 @@ describe('core/balanceProcessor', function () {
     ctx.amqp.channel = await ctx.amqp.instance.createChannel();
     await ctx.amqp.channel.assertExchange('events', 'topic', {durable: false});
     await ctx.amqp.channel.assertExchange('internal', 'topic', {durable: false});
-    await ctx.amqp.channel.assertQueue(`${config.rabbit.serviceName}_current_provider.get`, 
-      {durable: false});
-    await ctx.amqp.channel.bindQueue(`${config.rabbit.serviceName}_current_provider.get`, 
-      'internal', `${config.rabbit.serviceName}_current_provider.get`);
+    await ctx.amqp.channel.assertQueue(`${config.rabbit.serviceName}_current_provider.get`, {durable: false, autoDelete: true});
+    await ctx.amqp.channel.bindQueue(`${config.rabbit.serviceName}_current_provider.get`, 'internal', `${config.rabbit.serviceName}_current_provider.get`);
 
-    ctx.amqp.channel.consume(`${config.rabbit.serviceName}_current_provider.get`, 
-      async () => {
-        ctx.amqp.channel.publish('internal', 
-          `${config.rabbit.serviceName}_current_provider.set`, 
-          new Buffer(JSON.stringify({index: 1})))
-        ;
-      }, {noAck: true});
+    ctx.amqp.channel.consume(`${config.rabbit.serviceName}_current_provider.get`, async (data) => {
+        ctx.amqp.channel.publish('internal', `${config.rabbit.serviceName}_current_provider.set`, new Buffer(JSON.stringify({index: 0})));
+      }, {noAck: true, autoDelete: true});
 
 
 
@@ -65,15 +59,15 @@ describe('core/balanceProcessor', function () {
 
   after (async () => {
     mongoose.disconnect();
+    providerService.wsProvider.disconnect();
     await ctx.amqp.instance.close();
     await ctx.checkerPid.kill();
   });
 
 
+  // describe('block', () => blockTests(ctx));
 
-  describe('block', () => blockTests(ctx));
-
-  describe('performance', () => performanceTests(ctx));
+ // describe('performance', () => performanceTests(ctx));
 
   describe('fuzz', () => fuzzTests(ctx));
 
